@@ -1,0 +1,11 @@
+.env
+!.env.example
+.greennode.json
+.agentbase/
+.agentbase-state.json
+*.credentials.json
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.claude/settings.local.json

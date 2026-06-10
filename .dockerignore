@@ -1,0 +1,12 @@
+.env
+.env.*
+.agentbase/
+*.credentials.json
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+*.md
+!README.md
+.greennode.json
