@@ -1,6 +1,8 @@
 .env
 .env.*
 .agentbase/
+.agentbase-state.json
+.agentbase-last-image.txt
 *.credentials.json
 __pycache__
 *.pyc
@@ -10,3 +12,17 @@ __pycache__
 *.md
 !README.md
 .greennode.json
+venv/
+.claude/
+.agents/
+Test data/
+memory/
+clawathon-creative-agent/
+.pycache_tmp/
+uvicorn-*.log
+layout_analysis.html
+test_result_report.html
+Creative report t4 final mobile.html
+tmp_analysis_result.json
+/Thumbnail.png
+/Thumbnail 2.png

@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creative Performance Insight Agent</title>
+<style>
+:root{--pri:#2563eb;--pri-l:#dbeafe;--ok:#16a34a;--ok-l:#dcfce7;--warn:#d97706;--warn-l:#fef3c7;--err:#dc2626;--err-l:#fee2e2;--purple:#7c3aed;--purple-l:#ede9fe;--blue:#0ea5e9;--blue-l:#e0f2fe;--g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;--g400:#9ca3af;--g600:#4b5563;--g700:#374151;--g800:#1f2937;--r:12px;--sh:0 1px 3px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--g50);color:var(--g800);line-height:1.5;font-size:14px}
+.hdr{background:#fff;border-bottom:1px solid var(--g200);padding:14px 24px;display:flex;align-items:center;gap:10px}
+.hdr h1{font-size:17px;font-weight:600}.hdr .badge{font-size:11px;background:var(--pri-l);color:var(--pri);padding:2px 8px;border-radius:99px;font-weight:500}
+.hero-wrap{max-width:1440px;margin:0 auto;padding:14px 24px 0}
+.hero-banner{position:relative;display:grid;grid-template-columns:minmax(470px,64%) 1fr;align-items:stretch;min-height:220px;background:#071426;border:1px solid #0f2540;border-radius:14px;overflow:hidden;box-shadow:var(--sh)}
+.hero-banner:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#071426 0%,#071426 63%,rgba(7,20,38,.88) 69%,rgba(7,20,38,.24) 78%,rgba(7,20,38,0) 88%);z-index:1;pointer-events:none}
+.hero-text{position:relative;z-index:2;padding:20px 24px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.hero-kicker{font-size:11px;font-weight:700;color:#7dd3fc;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.hero-title{font-size:28px;font-weight:800;line-height:1.15;margin:0 0 8px;color:#fff}
+.hero-title span{color:#93c5fd}
+.hero-desc{font-size:13.5px;line-height:1.55;color:#dbeafe;margin:0 0 10px;max-width:640px}
+.hero-modes{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.hero-label{font-size:12px;color:#bfdbfe;font-weight:600}
+.hero-chip{font-size:12px;font-weight:700;color:#e0f2fe;background:rgba(37,99,235,.28);border:1px solid rgba(147,197,253,.55);border-radius:99px;padding:2px 10px}
+.hero-flow{font-size:12.5px;color:#f8fafc;white-space:nowrap}
+.hero-team{font-size:11px;color:#bfdbfe;margin-top:9px;line-height:1.45;font-style:italic;max-width:none;white-space:nowrap}
+.hero-team strong{color:#fff;font-style:normal}
+.hero-img{position:absolute;right:0;top:0;width:38%;height:100%;object-fit:cover;object-position:right center;transform:translateX(24%);z-index:0;filter:saturate(1.08) contrast(1.04)}
+.ctr{max-width:1440px;margin:0 auto;padding:20px 24px}
+.setup-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start}
+.setup-grid>#step1{grid-column:span 5;grid-row:1}
+.setup-grid>#step4{grid-column:span 7;grid-row:1;align-self:stretch;display:flex;flex-direction:column}
+.setup-grid>#step2{grid-column:1/-1;grid-row:2}
+.setup-grid>#step3{grid-column:1/-1;grid-row:3}
+.result-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start}
+.result-grid>*{grid-column:1/-1}
+.card{background:#fff;border-radius:var(--r);border:1px solid var(--g200);padding:16px;margin-bottom:16px;box-shadow:var(--sh)}
+.card h2{font-size:15px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+label{display:block;font-size:13px;font-weight:500;color:var(--g700);margin-bottom:3px}
+input[type="text"],input[type="number"],select,textarea{width:100%;padding:7px 10px;border:1px solid var(--g300);border-radius:8px;font-size:13px;color:var(--g800);background:#fff;font-family:inherit}
+textarea{resize:vertical;min-height:60px}
+#step4 textarea{min-height:108px;line-height:1.5}
+#step4 #aq{flex:1}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.fr{display:flex;gap:10px;margin-bottom:8px}.fr>*{flex:1}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:.15s}
+.btn-pri{background:var(--pri);color:#fff}.btn-out{background:#fff;color:var(--g700);border:1px solid var(--g300)}.btn-out:hover{background:var(--g50)}
+.btn-go{background:var(--ok);color:#fff;font-size:15px;padding:10px 36px}.btn-go:hover{background:#15803d}.btn-go:disabled{background:var(--g300);cursor:not-allowed}
+.upload{border:2px dashed var(--g300);border-radius:var(--r);padding:16px;text-align:center;cursor:pointer;background:var(--g50);transition:.15s;position:relative;overflow:hidden}
+.upload:hover,.upload.dragover{border-color:var(--pri);background:var(--pri-l)}
+.upload .icon{font-size:24px;margin-bottom:4px}.upload .hint{font-size:12px;color:var(--g400)}
+.upload .dz-inner{position:relative;z-index:1}
+.upload input[type="file"]{position:static;display:block;width:min(420px,100%);margin:10px auto 0;padding:6px 8px;border:1px solid var(--g300);border-radius:6px;background:#fff;font-size:12px;cursor:pointer}
+.ptable{max-height:300px;overflow:auto;margin-top:10px;border:1px solid var(--g200);border-radius:8px}
+.ptable table{min-width:960px}
+.ptable th{position:sticky;top:0;z-index:2}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:6px 10px;background:var(--g50);border-bottom:2px solid var(--g200);font-weight:600;color:var(--g600)}
+td{padding:6px 10px;border-bottom:1px solid var(--g100)}
+.hidden{display:none!important}
+.hr{border:none;border-top:1px solid var(--g200);margin:12px 0}
+.alert{padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:6px;line-height:1.45}
+.alert-warn{background:var(--warn-l);color:#92400e}
+.alert-info{background:var(--pri-l);color:#1e40af}
+.db{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.db-SCALE{background:var(--ok-l);color:var(--ok)}
+.db-ITERATE{background:var(--purple-l);color:var(--purple)}
+.db-INVESTIGATE{background:var(--warn-l);color:var(--warn)}
+.db-MAINTAIN{background:var(--blue-l);color:var(--blue)}
+.db-PAUSE{background:var(--err-l);color:var(--err)}
+.db-ITERATE-COPY{background:var(--purple-l);color:var(--purple)}
+.db-CHECK-DELIVERY{background:var(--warn-l);color:var(--warn)}
+.wg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.wbox{border:1px solid var(--g200);border-radius:8px;padding:8px;background:#fff}
+.wbox label{font-size:11px;text-transform:uppercase;color:var(--g400);letter-spacing:.3px}
+.wbox input{font-size:15px;font-weight:600}
+.werr{font-size:12px;color:var(--err);margin-top:6px}
+.sw-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sw-row select{flex:2;min-width:0}
+.sw-row input[type="number"]{flex:0 0 72px;text-align:center;font-weight:600}
+.sw-row .sw-pct{font-size:12px;color:var(--g400);flex:0 0 14px}
+.sw-row .sw-rm{flex:0 0 28px;height:28px;border:none;background:var(--err-l);color:var(--err);border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.sw-row .sw-rm:hover{background:var(--err);color:#fff}
+.sw-add{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px dashed var(--pri);border-radius:6px;background:transparent;color:var(--pri);font-size:12px;cursor:pointer;margin-top:4px}
+.sw-add:hover{background:var(--pri-l)}
+.sw-total{font-size:12px;margin-top:6px;padding:6px 10px;border-radius:6px}
+.sw-total.ok{background:var(--ok-l);color:#166534}
+.sw-total.err{background:var(--err-l);color:#991b1b}
+.lcard{padding:12px;border:1px solid var(--g200);border-radius:8px;margin-bottom:0;background:#fff}
+.lcard .ldim{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--pri);letter-spacing:.5px}
+.lcard .lfind{font-size:13px;margin-top:4px;white-space:pre-line}
+.lcard .levid{font-size:12px;color:var(--g600);margin-top:4px}
+.lcard .lact{font-size:13px;margin-top:6px;padding:8px 10px;background:var(--ok-l);border-radius:6px;color:#166534;white-space:pre-line}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch}
+@media(max-width:760px){.compare{grid-template-columns:1fr}}
+.citem{display:flex;gap:12px;padding:14px;border:1px solid var(--g200);border-radius:8px;margin-bottom:8px;background:#fff;height:100%}
+.story-stack .citem{height:auto!important;min-height:0!important;flex:none!important;margin-bottom:0}
+.citem img{width:64px;height:64px;object-fit:cover;border-radius:6px;flex-shrink:0}
+.citem .cph{width:64px;height:64px;border-radius:6px;background:var(--g100);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;color:var(--g500);text-align:center;line-height:1.25;padding:5px;flex-direction:column}
+.rtable{width:100%;border-collapse:collapse;font-size:12px}
+.rtable th{text-align:left;padding:8px;background:var(--g50);border-bottom:2px solid var(--g200)}
+.rtable td{padding:8px;border-bottom:1px solid var(--g100);vertical-align:top;white-space:pre-line}
+.rtable .hi{color:var(--err);font-weight:600}.rtable .med{color:var(--warn);font-weight:600}
+.table-scroll{width:100%;overflow-x:auto}
+.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.summary-grid .lcard{min-height:150px;padding:16px;border-radius:10px}
+.summary-grid .ldim{font-size:11px;margin-bottom:8px}
+.summary-grid .lfind{font-size:13px;line-height:1.55}
+.summary-card{padding:16px;border-radius:10px;border:1px solid var(--g200);background:#fff;min-height:150px}
+.summary-card.key-learning{border-left:4px solid var(--ok)}
+.summary-card.bottleneck{border-left:4px solid var(--warn)}
+.summary-card.next-step{border-left:4px solid var(--pri)}
+.summary-card.key-learning{background:linear-gradient(90deg,#f0fdf4 0,#fff 28%)}
+.summary-card.bottleneck{background:linear-gradient(90deg,#fffbeb 0,#fff 28%)}
+.summary-card.next-step{background:linear-gradient(90deg,#eff6ff 0,#fff 28%)}
+.summary-card .sc-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.summary-card.key-learning .sc-title{color:var(--ok)}
+.summary-card.bottleneck .sc-title{color:var(--warn)}
+.summary-card.next-step .sc-title{color:var(--pri)}
+.summary-card .sc-entity{font-size:13px;font-weight:700;margin-bottom:8px}
+.summary-card .lfind{font-size:13px;line-height:1.65;white-space:pre-line}
+.summary-card .lfind strong,.takeaway-grid strong,.a-meta strong{font-weight:800;color:var(--g800)}
+.takeaway-grid .lact strong,.insight-block strong{color:inherit}
+.summary-card .next-lines{display:grid;gap:7px;margin-top:4px}
+.summary-card .next-line{padding:7px 9px;border-radius:6px;background:#fff;border:1px solid #bfdbfe;font-size:12px;line-height:1.5}
+.summary-card ul{list-style:none;padding:0;margin:0}
+.summary-card ul li{font-size:12px;line-height:1.6;padding:2px 0}
+.summary-card ul li::before{margin-right:6px}
+.summary-card ol{padding-left:18px;margin:0}
+.summary-card ol li{font-size:12px;line-height:1.6;padding:2px 0}
+.metric-highlight{font-weight:700}
+.metric-highlight.good{color:var(--ok)}
+.metric-highlight.risk{color:var(--err)}
+.metric-highlight.warn{color:var(--warn)}
+.metric-highlight.neutral{color:var(--g700)}
+.metric-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;font-family:monospace;background:var(--g50);border:1px solid var(--g200);margin:2px 0}
+.metric-chip.good{background:var(--ok-l);border-color:#bbf7d0;color:#166534}
+.metric-chip.warn{background:var(--warn-l);border-color:#fde68a;color:#92400e}
+.metric-chip.risk{background:var(--err-l);border-color:#fecaca;color:#991b1b}
+.metric-chip.na{background:var(--g50);border-color:var(--g200);color:var(--g400);font-style:italic}
+.metric-chip .mc-label{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:500;font-size:11px;opacity:.7}
+.heatmap-wrap{margin-top:12px}
+.hm-controls{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.hm-controls .hm-btn{padding:4px 10px;border:1px solid var(--g200);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--g600);transition:.15s}
+.hm-controls .hm-btn:hover,.hm-controls .hm-btn.active{border-color:var(--pri);color:var(--pri);background:var(--pri-l)}
+.hm-grid{display:grid;gap:2px;margin-top:6px}
+.hm-cell{border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;min-height:36px;cursor:default;transition:box-shadow .15s;position:relative}
+.hm-cell:hover{box-shadow:0 0 0 2px var(--pri);z-index:1}
+.hm-cell .hm-tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--g800);color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;white-space:nowrap;z-index:10;font-weight:400;line-height:1.5;pointer-events:none}
+.hm-cell:hover .hm-tip{display:block}
+.hm-label{font-size:11px;font-weight:600;color:var(--g600);display:flex;align-items:center;justify-content:center}
+.hm-legend{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:10px;color:var(--g400)}
+.hm-legend-bar{height:8px;width:120px;border-radius:4px;background:linear-gradient(90deg,#e0f2fe,#0369a1)}
+.top-hours{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.top-hour-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:var(--pri-l);color:var(--pri);border:1px solid #bfdbfe}
+.top-hour-chip .thc-rank{width:18px;height:18px;border-radius:50%;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.hour-summary{padding:12px;background:var(--g50);border-radius:8px;margin-bottom:12px;font-size:12px;line-height:1.6}
+.hour-summary strong{color:var(--g800)}
+.hour-summary .hs-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.takeaway-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(520px,1fr));gap:14px;align-items:stretch}
+.takeaway-grid .lcard{display:flex;flex-direction:column;gap:9px;min-height:0;border-radius:8px;border-left:3px solid var(--pri)}
+.takeaway-grid .lfind,.takeaway-grid .levid{font-size:12px;line-height:1.6}
+.takeaway-grid .lact{font-size:13px;line-height:1.55;border-left:3px solid var(--ok);background:var(--ok-l)}
+.takeaway-grid details{margin-top:auto}
+.takeaway-grid summary{cursor:pointer;color:var(--pri);font-size:12px;font-weight:600;list-style:none}
+.takeaway-grid summary::-webkit-details-marker{display:none}
+.action-grid{display:grid;grid-template-columns:1fr;gap:10px}
+.action-card{border:1px solid var(--g200);border-radius:10px;background:#fff;padding:12px;display:grid;grid-template-columns:auto minmax(220px,1fr) minmax(360px,1.6fr) minmax(180px,.8fr);gap:10px 14px;align-items:start}
+.priority-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;text-transform:uppercase;background:var(--warn-l);color:var(--warn);white-space:nowrap;min-width:80px;text-align:center}
+.priority-badge.high{background:var(--err-l);color:var(--err)}.priority-badge.top{background:#7f1d1d;color:#fff}
+.action-card .a-title{font-weight:600;font-size:13px;line-height:1.45}
+.action-card .a-meta{grid-column:3;font-size:12px;color:var(--g600);line-height:1.45}
+.action-card .a-output{grid-column:4;background:var(--g50);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--g600)}
+.compare-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+.compare-panel{display:flex;flex-direction:column;gap:8px;min-height:100%}
+.compare-panel .citem{flex:1;margin-bottom:0}
+.thumb-img,.thumb-ph{width:74px;height:74px;border-radius:6px;object-fit:cover;flex-shrink:0}
+.thumb-ph{background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--g600);text-align:center;line-height:1.25;padding:6px}
+.warning-stack{display:grid;gap:6px;margin-bottom:16px}
+.warning-item{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:8px;font-size:12px;line-height:1.35}
+.warning-item .wi{font-size:13px;line-height:1.2;flex-shrink:0}
+.dcard{border:1px solid var(--g200);border-radius:var(--r);margin-bottom:12px;overflow:hidden;background:#fff}
+.dcard-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;transition:.1s}
+.dcard-hdr:hover{background:var(--g50)}
+.dcard-hdr img{width:56px;height:56px;object-fit:cover;border-radius:6px;flex-shrink:0}
+.dcard-hdr .dph{width:56px;height:56px;border-radius:6px;background:var(--g100);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;color:var(--g500);text-align:center;line-height:1.2;padding:4px;flex-direction:column}
+.dcard-hdr .di{flex:1;min-width:0}
+.dcard-hdr .dn{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dcard-hdr .dd{font-size:12px;color:var(--g600);margin-top:2px}
+.dcard-hdr .dqs{text-align:right;flex-shrink:0}.dcard-hdr .dqs .v{font-size:22px;font-weight:700}.dcard-hdr .dqs .l{font-size:9px;color:var(--g400)}
+.dcard-hdr .arr{color:var(--g400);font-size:18px;transition:transform .2s;flex-shrink:0}
+.dcard.open .arr{transform:rotate(180deg)}
+.dcard-body{display:none;padding:0 16px 16px;border-top:1px solid var(--g100)}
+.dcard.open .dcard-body{display:block}
+.check-row{display:flex;align-items:flex-start;gap:6px;padding:5px 0;font-size:12px;color:var(--g700);border-bottom:1px solid var(--g50)}
+.check-row span:first-child{flex-shrink:0;width:14px;text-align:center}
+.lo{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:10px}
+.sp{display:inline-block;width:28px;height:28px;border:3px solid var(--g200);border-top-color:var(--pri);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:10px;max-height:420px;overflow-y:auto;padding-right:4px}
+.ic{border:1px solid var(--g200);border-radius:8px;overflow:hidden;position:relative}
+.ic img{width:100%;height:84px;object-fit:cover}.ic .il{padding:4px 6px;font-size:11px;color:var(--g600);word-break:break-all;line-height:1.25}
+.ic .rb{position:absolute;top:3px;right:3px;width:20px;height:20px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:8px}
+.nf{background:#fff;border:1px solid var(--g200);border-radius:8px;padding:10px;min-width:0}
+.nf .fl{font-size:10px;color:var(--g400);text-transform:uppercase;letter-spacing:.4px}.nf .fv{font-size:13px;font-weight:600;margin-top:2px;word-break:break-word}
+.nf .vl{font-size:10px;color:var(--g400);margin-top:5px;text-transform:uppercase;letter-spacing:.35px}
+.mapping-shell{border:1px solid var(--g200);border-radius:10px;padding:10px;background:var(--g50);margin-top:8px}
+.mapping-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.mapping-title{font-size:12px;font-weight:700;color:var(--g700)}
+.pill{display:inline-block;padding:4px 10px;border:1px solid var(--g200);border-radius:99px;font-size:12px;cursor:pointer;background:#fff;color:var(--g600);transition:.15s;margin:3px 3px 3px 0}
+.pill:hover,.pill.active{border-color:var(--pri);color:var(--pri);background:var(--pri-l)}
+.brief-focus{margin-top:10px;padding:8px 10px;border:1px solid var(--g200);border-radius:8px;background:var(--g50);font-size:12px;color:var(--g600)}
+.brief-focus strong{color:var(--g700)}
+.mode-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:var(--pri-l);color:var(--pri);text-transform:uppercase;letter-spacing:.3px}
+.chgrp{margin-bottom:8px}.chgrp .chg-title{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.chgrp .chg-items{display:flex;flex-wrap:wrap;gap:4px}
+.chgrp label{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:12px;font-weight:400;background:#fff;transition:.15s}
+.chgrp label:hover{border-color:var(--pri)}
+.chgrp label:has(input:checked){border-color:var(--pri);background:var(--pri-l)}
+.adv-toggle{font-size:12px;color:var(--pri);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block}
+.sec-head{font-size:15px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px}
+.insight-block{font-size:13px;margin-top:6px;padding:8px 10px;border-radius:6px;line-height:1.6}
+.insight-block.green{background:var(--ok-l);color:#166534}
+.insight-block.red{background:var(--err-l);color:#991b1b}
+.insight-block.blue{background:var(--pri-l);color:#1e40af}
+.insight-block.amber{background:var(--warn-l);color:#92400e}
+.strength-line{color:var(--ok);font-weight:500}.weakness-line{color:var(--err);font-weight:500}
+.signal-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.signal-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:700;line-height:1.2}
+.signal-badge.good{background:var(--ok-l);color:var(--ok)}
+.signal-badge.risk{background:var(--err-l);color:var(--err)}
+.signal-badge.warn{background:var(--warn-l);color:var(--warn)}
+.signal-badge.action{background:var(--pri-l);color:var(--pri)}
+.kv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;margin-top:8px;font-size:12px}
+.kv-grid div{padding:6px 8px;background:var(--g50);border-radius:6px;min-width:0}
+.kv-grid strong{display:block;font-size:10px;text-transform:uppercase;color:var(--g400);letter-spacing:.3px;margin-bottom:2px}
+.rewrite-list{margin:6px 0 0 18px;font-size:12px}
+.hour-row{display:grid;grid-template-columns:56px 1fr 150px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--g100);font-size:12px}
+.hour-bar{height:8px;border-radius:99px;background:var(--g100);overflow:hidden}
+.hour-bar>div{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--pri),var(--ok))}
+.compare>div{display:flex;flex-direction:column}
+.compare>div>.citem{flex:1}
+@media(max-width:1100px){
+  .ctr{padding:20px}
+  .setup-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px}
+  .setup-grid>#step1{grid-column:1/-1;grid-row:1}
+  .setup-grid>#step4{grid-column:1/-1;grid-row:2}
+  .setup-grid>#step2{grid-column:1/-1;grid-row:3}
+  .setup-grid>#step3{grid-column:1/-1;grid-row:4}
+  .result-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px}
+  .summary-grid{grid-template-columns:1fr}
+  .takeaway-grid{grid-template-columns:repeat(auto-fit,minmax(360px,1fr))}
+  .field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .action-card{grid-template-columns:auto 1fr}
+  .action-card .a-meta,.action-card .a-output{grid-column:2}
+}
+@media(max-width:760px){
+  .ctr{padding:14px}
+  .hero-wrap{padding:12px 14px 0}
+  .hero-banner{display:flex;flex-direction:column;min-height:0}
+  .hero-banner:before{background:linear-gradient(180deg,#071426 0%,rgba(7,20,38,.96) 45%,rgba(7,20,38,.45) 72%,rgba(7,20,38,0) 100%)}
+  .hero-text{padding:18px}
+  .hero-title{font-size:24px}
+  .hero-flow{white-space:normal}
+  .hero-team{white-space:normal}
+  .hero-img{position:relative;width:100%;height:auto;max-height:280px}
+  .card{padding:14px;margin-bottom:14px}
+  .setup-grid,.result-grid{display:block}
+  .fr{flex-direction:column;gap:8px}
+  .wg{grid-template-columns:1fr}
+  .takeaway-grid{grid-template-columns:1fr}
+  .field-grid{grid-template-columns:1fr}
+  .summary-grid{grid-template-columns:1fr}
+  .action-card{grid-template-columns:1fr}
+  .action-card .a-meta,.action-card .a-output{grid-column:1}
+  .table-scroll{overflow-x:auto}
+  .rtable{min-width:680px}
+  .dcard-hdr{align-items:flex-start}
+  .dcard-hdr .dqs{display:none}
+}
+@media(max-width:640px){.hour-row{grid-template-columns:48px 1fr}.hour-row .hm{grid-column:1/3}}
+</style>
+</head>
+<body>
+<div class="hdr"><h1>Creative Performance Insight Agent</h1><span class="badge">v4 · Impact Analytics</span><span class="badge" id="build-badge" title="UI build 2026-06-16.27">build 2026-06-16.27</span></div>
+<script>fetch('/health').then(r=>r.json()).then(d=>{var b=document.getElementById('build-badge');if(b){b.textContent='build '+(d.build||'?');b.title='UI build 2026-06-16.27 · server build '+(d.build||'?')+(d.build==='2026-06-16.27'?' ✓':' ⚠ mismatch — restart uvicorn');}}).catch(()=>{});</script>
+<div class="hero-wrap">
+<section class="hero-banner">
+  <div class="hero-text">
+    <div class="hero-kicker">Creative Performance Insight Agent</div>
+    <h1 class="hero-title">Từ <span>data creative</span> → quyết định tiếp theo</h1>
+    <p class="hero-desc">Biến CSV performance thành kết luận hành động — hết cảnh đọc bảng số mà không biết creative nào thắng, vướng ở đâu, test gì.</p>
+    <div class="hero-modes"><span class="hero-label">Modes:</span><span class="hero-chip">UA</span><span class="hero-chip">Retargeting</span><span class="hero-chip">Other</span></div>
+    <div class="hero-flow">Upload CSV → Agent phân tích → <b>Key Learning</b> · <b>Bottleneck</b> · <b>Next Step</b></div>
+    <div class="hero-team"><strong>Created by 8AM team.</strong> "8AM là thời gian bắt đầu tốt nhất cho một câu lệnh; sau 5h, token reset đúng lúc bắt đầu ca chiều lúc 01:00 PM."</div>
+  </div>
+  <img class="hero-img" src="/static/Thumbnail-hero.png" alt="Agent banner">
+</section>
+</div>
+
+<div class="ctr">
+<div class="setup-grid">
+<!-- STEP 1 -->
+<div class="card" id="step1">
+  <h2><span style="width:24px;height:24px;background:var(--pri);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">1</span> Target Audience & Channel</h2>
+  <div class="fr"><div><label>Product / App</label><input type="text" id="product" value="Zalopay"></div><div><label>Goal</label><select id="goal"><option value="ua">User Acquisition (UA)</option><option value="retargeting">Retargeting</option><option value="other">Other</option></select></div></div>
+  <div class="fr"><div><label>Age Range</label><div style="display:flex;gap:6px;align-items:center"><input type="number" id="age-min" value="18" style="width:70px"><span>—</span><input type="number" id="age-max" value="35" style="width:70px"></div></div><div><label>Location</label><input type="text" id="location" value="Vietnam"></div><div><label>Segment</label><input type="text" id="segment" placeholder="e.g. student, deal seeker..."></div></div>
+  <hr class="hr">
+  <label>Channel / Platform <span style="font-weight:400;color:var(--g400)">(chọn tất cả channel có trong file)</span></label>
+  <div id="ch-area" style="margin-top:6px">
+    <div class="chgrp"><div class="chg-title">A. SRN / Paid Social</div><div class="chg-items"><label><input type="checkbox" name="ch" value="Meta"><span>Meta</span></label><label><input type="checkbox" name="ch" value="TikTok"><span>TikTok</span></label><label><input type="checkbox" name="ch" value="Google UAC"><span>Google UAC</span></label><label><input type="checkbox" name="ch" value="Other Social"><span>Other</span></label></div></div>
+    <div class="chgrp"><div class="chg-title">B. Programmatic / In-app Banner</div><div class="chg-items"><label><input type="checkbox" name="ch" value="DSP"><span>DSP / Programmatic</span></label><label><input type="checkbox" name="ch" value="Other Network"><span>Other Network</span></label></div></div>
+    <div class="chgrp"><div class="chg-title">C. Owned / Lifecycle</div><div class="chg-items"><label><input type="checkbox" name="ch" value="Push Notification"><span>Push Notification</span></label><label><input type="checkbox" name="ch" value="Message"><span>Message</span></label><label><input type="checkbox" name="ch" value="Email"><span>Email</span></label></div></div>
+  </div>
+</div>
+
+<!-- STEP 2 -->
+<div class="card" id="step2">
+  <h2><span style="width:24px;height:24px;background:var(--pri);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600" id="s2n">2</span> Performance Data</h2>
+  <label class="upload" id="csv-dz" for="csv-in"><input type="file" id="csv-in" accept=".csv,.xlsx,.xls" onchange="handlePerformanceFiles(this.files);this.value=''"><div class="dz-inner"><div class="icon">📄</div><div><strong>Drop CSV file here</strong> or click to browse</div><div class="hint">.csv, .xlsx or .xls</div></div></label>
+  <div id="csv-pv" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><div><strong id="csv-fn"></strong><span id="csv-st" style="color:var(--g400);font-size:12px;margin-left:6px"></span></div><button class="btn btn-out" onclick="resetCSV()" style="font-size:11px">Đổi file</button></div>
+    <div id="mode-det" class="hidden" style="margin-top:8px"></div>
+    <div class="ptable" id="csv-tw"></div>
+    <hr class="hr">
+    <label style="font-size:14px;font-weight:600;margin-bottom:8px">Impact Analytics Setup</label>
+    <div class="fr"><div><label>Primary Metric(s)</label><select id="pm" onchange="autoSuggestSM()"></select></div><div><label>Breakdown Dimension</label><select id="bd" onchange="onBdChange()"></select></div></div>
+    <div id="np-area" class="hidden">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><label style="margin:0;font-size:12px">AI-Detected Fields</label><button class="btn btn-out" onclick="reparseNaming()" style="font-size:10px;padding:2px 6px">Re-parse</button></div>
+      <div class="mapping-shell">
+        <div class="mapping-head"><div class="mapping-title">AI-Detected Field Mapping</div><span style="font-size:11px;color:var(--g400)">Default open after parse</span></div>
+        <div style="font-size:11px;color:var(--g500);margin-bottom:4px">Raw filename:</div>
+        <div id="np-sample" style="font-family:monospace;font-size:12px;background:#fff;padding:6px 10px;border:1px solid var(--g200);border-radius:6px;margin-bottom:8px;overflow-x:auto;white-space:nowrap"></div>
+        <div class="field-grid" id="np-fields"></div>
+      </div>
+    </div>
+    <div class="fr"><div><label>Benchmark / Historical Reference</label><input type="text" id="cpa-b" placeholder="Ví dụ: target CPI 40,000đ; CP Login tháng trước 18,000đ; planning benchmark; campaign median; historical avg."></div><div><label>Currency</label><select id="curr"><option value="USD">USD (giữ nguyên)</option><option value="VND">VND (giữ nguyên)</option><option value="USD_TO_VND">USD → VND (convert)</option></select></div></div>
+    <div><span class="adv-toggle" onclick="toggleAdv()">▸ Advanced: Supporting Metrics & Scoring</span></div>
+    <div id="adv-section" class="hidden" style="margin-top:10px;padding:12px;background:var(--g50);border-radius:8px">
+      <label>Supporting Metrics <span style="font-weight:400;color:var(--g400)">(auto-suggested)</span></label>
+      <div id="sm-area" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px"></div>
+      <hr class="hr">
+      <label>Preset Scoring</label>
+      <select id="qs-obj" onchange="applyPreset(this.value)" style="margin-top:4px">
+        <option value="creative_balanced">Creative Balanced — CTR 30 / CVR 30 / CPA 40</option>
+        <option value="conversion_quality" selected>Conversion Quality — CTR 15 / CVR 45 / CPA 40</option>
+        <option value="cost_efficiency">Cost Efficiency — CTR 15 / CVR 25 / CPA 60</option>
+        <option value="install_volume">Install Volume — CTR 25 / CVR 35 / CPI 40</option>
+        <option value="login_quality">Login Quality — CTR 15 / Login Rate 45 / CP Login 40</option>
+        <option value="payment_quality">Payment Quality — CTR 10 / Payment Rate 45 / CP Payment 45</option>
+        <option value="noti_engagement">Notification Engagement — %Sent 20 / Open Rate 30 / Click Rate 50</option>
+        <option value="noti_downstream">Notification Downstream — Click Rate 30 / Click→Payment 50 / Payment Rate 20</option>
+        <option value="custom">Custom</option>
+      </select>
+      <div id="sw-rows" style="margin-top:8px"></div>
+      <button type="button" class="sw-add" onclick="addScoringRow()">+ Add metric</button>
+      <div id="sw-total" class="sw-total ok" style="margin-top:6px"></div>
+      <div id="w-warn" class="werr hidden"></div>
+      <div id="denom-section" class="hidden" style="margin-top:10px">
+        <hr class="hr">
+        <label>Click Rate Denominator</label>
+        <select id="click-denom" style="margin-top:4px">
+          <option value="auto">Auto (Success if available, else Sent)</option>
+          <option value="sent">Click / Sent</option>
+          <option value="success">Click / Delivered (Success)</option>
+          <option value="open">Click / Open</option>
+        </select>
+        <div style="font-size:10px;color:var(--g400);margin-top:2px">Controls how Click Rate is calculated in Notification mode</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3 -->
+<div class="card" id="step3">
+  <h2><span style="width:24px;height:24px;background:var(--pri);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">3</span> Creative Assets <span style="font-size:12px;color:var(--g400);margin-left:auto;font-weight:400">Optional — enables visual analysis</span></h2>
+  <label class="upload" id="img-dz" for="img-in"><input type="file" id="img-in" accept="image/png,image/jpeg,image/webp" multiple onchange="handleCreativeFiles(this.files);this.value=''"><div class="dz-inner"><div class="icon">🖼️</div><div><strong>Drop images here</strong></div><div class="hint">PNG, JPG, WebP</div></div></label>
+  <div id="img-pv" class="ig"></div>
+</div>
+
+<!-- ANALYSIS QUESTION -->
+<div class="card" id="step4">
+  <h2><span style="width:24px;height:24px;background:var(--pri);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">?</span> Analysis Brief — Mô tả mục tiêu bạn muốn phân tích <span style="font-size:12px;color:var(--g400);margin-left:auto;font-weight:400">Không bắt buộc</span></h2>
+  <textarea id="aq" placeholder="VD: Business goal là tăng first payment, Primary Metric = payment_success.&#10;VD: NPU = user thanh toán lần đầu trong tháng; MPU = monthly paying user.&#10;VD: Tôi chỉ muốn phân tích CTR/attention, chưa kết luận downstream quality.&#10;VD: Với campaign này, conversion chính là Login Success, không phải Install.&#10;VD: Mục tiêu là tìm creative/size/placement nào tạo qualified traffic tốt nhất.&#10;VD: Nếu metric name khó hiểu, định nghĩa rõ event đó được count khi nào."></textarea>
+  <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:0">
+    <span class="pill" onclick="setQ('Tìm winning creative',this)">Tìm winning creative</span>
+    <span class="pill" onclick="setQ('Tìm losing creative',this)">Tìm losing creative</span>
+    <span class="pill" onclick="setQ('Phân tích CTR cao nhưng CVR thấp',this)">CTR cao / CVR thấp</span>
+    <span class="pill" onclick="setQ('Phân tích size / ratio impact',this)">Size / ratio impact</span>
+    <span class="pill" onclick="setQ('Phân tích offer / promotion impact',this)">Offer / promotion impact</span>
+    <span class="pill" onclick="setQ('Phân tích CTA impact',this)">CTA impact</span>
+    <span class="pill" onclick="setQ('Phân tích hour analysis',this)">Hour analysis</span>
+    <span class="pill" onclick="setQ('Phân tích notification title',this)">Notification title</span>
+    <span class="pill" onclick="setQ('Phân tích funnel open/login/payment',this)">Funnel analysis</span>
+    <span class="pill" onclick="setQ('Định nghĩa conversion metric cho campaign',this)">Định nghĩa metric</span>
+    <span class="pill" onclick="setQ('Tối ưu Click Rate cho notification',this)">Tối ưu Click Rate</span>
+    <span class="pill" onclick="setQ('Tối ưu NPU / MPU',this)">Tối ưu NPU / MPU</span>
+    <span class="pill" onclick="setQ('Phân tích title/body notification',this)">Phân tích title/body</span>
+    <span class="pill" onclick="setQ('Phân tích send time / khung giờ',this)">Phân tích send time</span>
+  </div>
+  <div class="brief-focus"><strong>Gợi ý:</strong> mô tả business goal, định nghĩa Primary Metric(s), và nói rõ bạn muốn attention-only, conversion quality, cost efficiency hay full funnel để tránh report hiểu sai mục tiêu.</div>
+</div>
+
+</div>
+
+<div style="text-align:center;margin:4px 0 28px"><button class="btn btn-go" id="go-btn" onclick="runAnalysis()" disabled>Run Analysis</button></div>
+
+<!-- ═══ RESULTS ═══ -->
+<div id="R" class="hidden result-grid">
+<div id="warn-area"></div>
+<div id="VC" class="hidden"><div class="card"><h2 class="sec-head" style="color:var(--warn)">Kiểm tra Variance cùng Concept</h2><div id="VC-body"></div></div></div>
+
+
+<div class="card" id="L1"><h2 class="sec-head" id="L1-title">Key Learning Summary</h2><div id="L1-body"></div></div>
+<div class="card" id="L2"><h2 class="sec-head" id="L2-title">Winning → Why It Wins → Worst Signal</h2><div class="compare" id="L2-body"></div></div>
+<div class="card" id="L3"><h2 class="sec-head" id="L3-title">Creative Key Takeaways</h2><div id="L3-body"></div></div>
+<div class="card hidden" id="NH"><h2 class="sec-head">Khung giờ notification hiệu quả</h2><div id="NH-body"></div></div>
+<div class="card hidden" id="NF"><h2 class="sec-head">Funnel Breakdown</h2><div id="NF-body"></div></div>
+<div class="card" id="L6"><h2 class="sec-head">Action Plan</h2><div id="L6-body"></div></div>
+<div id="L8-hdr" style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px"><h2 style="font-size:15px;font-weight:600;margin:0" id="L8-title">Creative Details</h2><button class="btn btn-out" onclick="toggleAll()" style="font-size:11px" id="toggle-all-btn">Expand All</button></div>
+<div id="L8"></div>
+</div>
+</div>
+
+<div class="lo hidden" id="lo"><div class="sp"></div><div id="lo-t">Analyzing...</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function fixText(s){
+  s=String(s??'');
+  if(!/[ÃÂâ]/.test(s))return s;
+  const cp={'€':0x80,'‚':0x82,'ƒ':0x83,'„':0x84,'…':0x85,'†':0x86,'‡':0x87,'ˆ':0x88,'‰':0x89,'Š':0x8a,'‹':0x8b,'Œ':0x8c,'Ž':0x8e,'‘':0x91,'’':0x92,'“':0x93,'”':0x94,'•':0x95,'–':0x96,'—':0x97,'˜':0x98,'™':0x99,'š':0x9a,'›':0x9b,'œ':0x9c,'ž':0x9e,'Ÿ':0x9f};
+  try{
+    const bytes=[];
+    for(const ch of s){
+      const code=ch.charCodeAt(0);
+      if(code<=255)bytes.push(code);
+      else if(cp[ch])bytes.push(cp[ch]);
+      else return s;
+    }
+    const out=new TextDecoder('utf-8',{fatal:true}).decode(new Uint8Array(bytes));
+    return /[ÃÂâ]/.test(out)?s:out;
+  }catch{return s}
+}
+function esc(s){return fixText(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function findImg(entity){
+  const imgs=[...(window.uploadedImages||[]),...(typeof uploadedImages!=='undefined'?uploadedImages:[])];
+  const norm=s=>String(s||'').toLowerCase().replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]+/g,'');
+  const target=norm(entity);
+  if(!target)return null;
+  return imgs.find(img=>{
+    const n=norm(img.name);
+    return n&&(target.includes(n)||n.includes(target));
+  })||null;
+}
+function dc(decision){
+  const d=String(decision||'').toUpperCase();
+  if(d.includes('SCALE'))return 'var(--ok)';
+  if(d.includes('MAINTAIN'))return 'var(--blue)';
+  if(d.includes('ITERATE'))return 'var(--purple)';
+  if(d.includes('INVESTIGATE')||d.includes('CHECK'))return 'var(--warn)';
+  if(d.includes('PAUSE'))return 'var(--err)';
+  return 'var(--g600)';
+}
+function dbClass(decision){return String(decision||'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'')||'MAINTAIN'}
+function chk(state,text){
+  const icon=state===true?'✓':state===false?'✕':'•';
+  const color=state===true?'var(--ok)':state===false?'var(--err)':'var(--warn)';
+  return `<div class="check-row"><span style="color:${color}">${icon}</span><span>${esc(text)}</span></div>`;
+}
+function sn(s){const v=String(s||'');return v.length>52?v.slice(0,49)+'...':v}
+let csvData=null,csvFile=null,uploadedImages=[],namingFields=[];
+window.uploadedImages=uploadedImages;
+let lastMs=[],lastResult=null;
+
+function setQ(t,el){
+  $('aq').value=t;
+  document.querySelectorAll('#step4 .pill').forEach(p=>p.classList.remove('active'));
+  if(el)el.classList.add('active');
+}
+function toggleAdv(){const s=$('adv-section');s.classList.toggle('hidden');const t=s.previousElementSibling.querySelector('.adv-toggle');t.textContent=s.classList.contains('hidden')?'▸ Advanced: Supporting Metrics & Scoring':'▾ Advanced: Supporting Metrics & Scoring'}
+function updateScoringForMode(){
+  const isN=csvIsNoti();const cur=$('qs-obj').value;
+  const ds=$('denom-section');if(ds)isN?ds.classList.remove('hidden'):ds.classList.add('hidden');
+  const hasNotiMetric=scoringRows.some(r=>METRICS_NOTI.includes(r.metric)&&!METRICS_CREATIVE.includes(r.metric));
+  const hasCreativeMetric=scoringRows.some(r=>METRICS_CREATIVE.includes(r.metric)&&!METRICS_NOTI.includes(r.metric));
+  if(isN&&!cur.startsWith('noti_')&&!hasNotiMetric){$('qs-obj').value='noti_engagement';applyPreset('noti_engagement')}
+  else if(!isN&&(cur.startsWith('noti_')||hasNotiMetric&&!hasCreativeMetric)){$('qs-obj').value='conversion_quality';applyPreset('conversion_quality')}
+  else renderScoringRows();
+}
+
+const METRICS_CREATIVE=['CTR','CVR','CPA','CPI','Login Rate','Payment Rate','Cost per Login','Cost per Payment','ROAS'];
+const METRICS_NOTI=['Success Rate','%Sent','Open Rate','Click Rate','Click-to-login Rate','Click-to-payment Rate','Payment Rate','Sent volume'];
+function presetMap(){return{
+  creative_balanced:[{metric:'CTR',weight:30},{metric:'CVR',weight:30},{metric:'CPA',weight:40}],
+  conversion_quality:[{metric:'CTR',weight:15},{metric:'CVR',weight:45},{metric:'CPA',weight:40}],
+  cost_efficiency:[{metric:'CTR',weight:15},{metric:'CVR',weight:25},{metric:'CPA',weight:60}],
+  install_volume:[{metric:'CTR',weight:25},{metric:'CVR',weight:35},{metric:'CPI',weight:40}],
+  login_quality:[{metric:'CTR',weight:15},{metric:'Login Rate',weight:45},{metric:'Cost per Login',weight:40}],
+  payment_quality:[{metric:'CTR',weight:10},{metric:'Payment Rate',weight:45},{metric:'Cost per Payment',weight:45}],
+  noti_engagement:[{metric:'Success Rate',weight:20},{metric:'Open Rate',weight:30},{metric:'Click Rate',weight:50}],
+  noti_downstream:[{metric:'Click Rate',weight:30},{metric:'Click-to-payment Rate',weight:50},{metric:'Payment Rate',weight:20}]
+}}
+let scoringRows=[];
+function csvIsNoti(){return csvData&&csvData.detected_mode&&((csvData.detected_mode.mode==='notification')||(csvData.detected_mode.possible_modes||[]).includes('notification'))}
+const API_BASE_URL=(location.port==='8080')?'http://127.0.0.1:8000':'';
+function apiFetch(path,opts){return fetch(API_BASE_URL+path,opts)}
+function availableMetrics(){
+  const base=csvIsNoti()?[...METRICS_NOTI]:[...METRICS_CREATIVE];
+  if(csvData&&csvData.numeric_columns){
+    csvData.numeric_columns.forEach(c=>{if(!base.some(m=>m.toLowerCase()===c.toLowerCase()))base.push(c)});
+  }
+  return base;
+}
+async function readJsonSafe(res){
+  const text=await res.text();
+  let data=null;
+  try{data=text?JSON.parse(text):null}catch{throw new Error(text||`HTTP ${res.status}`)}
+  if(!res.ok)throw new Error((data&&(data.detail||data.error))||text||`HTTP ${res.status}`);
+  return data;
+}
+function renderScoringRows(){
+  const container=$('sw-rows');
+  const metrics=availableMetrics();
+  const used=scoringRows.map(r=>r.metric);
+  container.innerHTML=scoringRows.map((row,i)=>{
+    const opts=metrics.map(m=>`<option value="${m}"${m===row.metric?' selected':''}${m!==row.metric&&used.includes(m)?' disabled':''}>${m}</option>`).join('');
+    return `<div class="sw-row">
+      <select onchange="swChangeMetric(${i},this.value)">${opts}</select>
+      <input type="number" min="0" max="100" value="${row.weight}" onchange="swChangeWeight(${i},+this.value)" oninput="swChangeWeight(${i},+this.value)">
+      <span class="sw-pct">%</span>
+      <button type="button" class="sw-rm" onclick="removeScoringRow(${i})" title="Remove">&times;</button>
+    </div>`;
+  }).join('');
+  validateWeights();
+}
+function addScoringRow(metric,weight){
+  const metrics=availableMetrics();
+  const used=scoringRows.map(r=>r.metric);
+  if(!metric){metric=metrics.find(m=>!used.includes(m))||metrics[0]}
+  scoringRows.push({metric:metric||'CTR',weight:weight||0});
+  renderScoringRows();
+}
+function removeScoringRow(i){scoringRows.splice(i,1);$('qs-obj').value='custom';renderScoringRows()}
+function swChangeMetric(i,val){scoringRows[i].metric=val;$('qs-obj').value='custom';renderScoringRows()}
+function swChangeWeight(i,val){scoringRows[i].weight=val;$('qs-obj').value='custom';validateWeights()}
+function applyPreset(key){
+  const p=presetMap()[key];
+  if(p){scoringRows=p.map(r=>({...r}));renderScoringRows()}
+  else validateWeights();
+}
+function getScoringConfig(){
+  return{
+    preset:$('qs-obj').selectedOptions[0]?.textContent.split('—')[0].trim()||'Custom',
+    weights:scoringRows.map(r=>({metric:r.metric,weight:r.weight})),
+    totalWeight:scoringRows.reduce((s,r)=>s+r.weight,0)
+  };
+}
+function objectiveWeights(){
+  const cfg=getScoringConfig();
+  const find=m=>{ const r=scoringRows.find(x=>x.metric.toLowerCase().includes(m)); return r?r.weight:0 };
+  return{ctr:find('ctr'),cvr:find('cvr')||find('login rate')||find('payment rate'),cpa:find('cpa')||find('cpi')||find('cost'),label:cfg.preset};
+}
+function validateWeights(){
+  const total=scoringRows.reduce((s,r)=>s+r.weight,0);
+  const ok=total===100;
+  const formula=scoringRows.map(r=>`${r.metric} ${r.weight}%`).join(' + ');
+  const el=$('sw-total');
+  if(el){
+    el.className='sw-total '+(ok?'ok':'err');
+    el.innerHTML=ok?`Scoring: <strong>${formula}</strong> = 100%.`:`Tổng trọng số hiện tại là ${total}%. Vui lòng điều chỉnh để tổng weight bằng 100%.`;
+  }
+  const warn=$('w-warn');
+  if(warn){warn.classList.toggle('hidden',ok);warn.textContent=ok?'':`Total weight = ${total}%. Must be 100%.`}
+  const btn=document.getElementById('go-btn');
+  if(btn&&csvFile)btn.disabled=!ok;
+  return ok;
+}
+
+applyPreset($('qs-obj').value);
+
+function getSelectedChannels(){return Array.from(document.querySelectorAll('input[name="ch"]:checked')).map(cb=>cb.value)}
+
+function autoSuggestSM(){
+  const pm=($('pm').value||'').toLowerCase();
+  if(csvIsNoti()){
+    document.querySelectorAll('#sm-area input[type="checkbox"]').forEach(cb=>{
+      const v=cb.value.toLowerCase();
+      cb.checked=['sent','success','click','payment','transaction','order','ctr','cr'].some(s=>v.includes(s));
+    });
+    return;
+  }
+  const suggestions={
+    'installs':['impressions','clicks','cost_usd','cost'],
+    'logins':['installs','clicks','cost_usd','cost'],
+    'login':['installs','clicks','cost_usd','cost'],
+    'payment':['login','logins','installs','cost_usd','cost'],
+    'npu':['logins','login','installs','cost_usd','cost'],
+    'clicks':['impressions','cost_usd','cost'],
+    'click':['impressions','cost_usd','cost'],
+    'notification_open':['notification_sent','login','logins'],
+    'noti_open':['noti_sent','login','logins'],
+    'revenue':['payment','cost_usd','cost','logins'],
+  };
+  const suggest=suggestions[pm]||['impressions','clicks','cost_usd','cost'];
+  document.querySelectorAll('#sm-area input[type="checkbox"]').forEach(cb=>{
+    cb.checked=suggest.some(s=>cb.value.toLowerCase().includes(s));
+  });
+}
+
+// CSV upload
+const csvDz=$('csv-dz'),csvIn=$('csv-in');
+const dataFileInputRef=csvIn;
+csvDz.addEventListener('dragover',e=>{e.preventDefault();csvDz.classList.add('dragover')});
+csvDz.addEventListener('dragleave',()=>csvDz.classList.remove('dragover'));
+csvDz.addEventListener('drop',e=>{e.preventDefault();csvDz.classList.remove('dragover');handlePerformanceFiles(e.dataTransfer.files)});
+dataFileInputRef.addEventListener('change',e=>{
+  handlePerformanceFiles(e.target.files);
+  e.target.value='';
+});
+
+let lastDataUploadKey='';
+function handlePerformanceFiles(files){
+  const file=Array.from(files||[])[0];
+  if(!file){
+    console.log('[upload:data] no file selected');
+    return;
+  }
+  const key=[file.name,file.size,file.lastModified].join('|');
+  if(key===lastDataUploadKey&&csvData)return;
+  lastDataUploadKey=key;
+  console.log('[upload:data] selected',file.name,file.type,file.size);
+  handleCSV(file);
+}
+setInterval(()=>{
+  if(!csvData&&dataFileInputRef.files&&dataFileInputRef.files.length){
+    handlePerformanceFiles(dataFileInputRef.files);
+  }
+},500);
+
+async function handleCSV(f){
+  csvFile=f;$('csv-fn').textContent=f.name;
+  console.log('[upload:data] parsing start',f.name);
+  // Show loading state on dropzone
+  (csvDz.querySelector('.dz-inner')||csvDz).innerHTML='<div class="icon">⏳</div><div><strong>Đang tải file...</strong></div><div class="hint">'+f.name+'</div>';
+  const fd=new FormData;fd.append('file',f);
+  try{
+    const r=await apiFetch('/api/upload-csv',{method:'POST',body:fd});
+    csvData=await readJsonSafe(r);
+    // Restore dropzone
+    (csvDz.querySelector('.dz-inner')||csvDz).innerHTML='<div class="icon">📄</div><div><strong>Drop CSV file here</strong> or click to browse</div><div class="hint">.csv, .xlsx or .xls</div>';
+    console.log('[upload:data] parsing success',csvData.row_count,csvData.columns);
+    showCSVPV();
+  }catch(e){
+    (csvDz.querySelector('.dz-inner')||csvDz).innerHTML='<div class="icon">📄</div><div><strong>Drop CSV file here</strong> or click to browse</div><div class="hint">.csv, .xlsx or .xls</div>';
+    console.error('[upload:data] parsing fail',e);
+    alert('Upload failed: '+e.message);
+  }
+}
+
+function showCSVPV(){
+  $('csv-pv').classList.remove('hidden');csvDz.classList.add('hidden');
+  $('csv-st').textContent=`${csvData.row_count} rows × ${csvData.columns.length} cols`;
+  let h='<table><tr>';csvData.columns.forEach(c=>h+=`<th>${esc(c)}</th>`);h+='</tr>';
+  csvData.sample_rows.forEach(row=>{h+='<tr>';csvData.columns.forEach(c=>h+=`<td>${esc(String(row[c]??''))}</td>`);h+='</tr>'});
+  $('csv-tw').innerHTML=h+'</table>';
+  const pm=$('pm');pm.innerHTML='<option value="">-- Select --</option>';
+  const primaryCols=(csvData.numeric_columns||[]).filter(c=>isPrimaryMetricCandidate(c));
+  primaryCols.forEach(c=>pm.innerHTML+=`<option value="${esc(c)}" ${/login|payment|install|npu|mpu/i.test(c)?'selected':''}>${esc(c)}</option>`);
+  const bd=$('bd');bd.innerHTML='<option value="">-- Select --</option>';
+  csvData.columns.forEach(c=>bd.innerHTML+=`<option value="${esc(c)}">${esc(c)}</option>`);
+  const autoBd=pickBreakdownColumn(csvData.columns);
+  if(autoBd)bd.value=autoBd;
+  const smArea=$('sm-area');smArea.innerHTML='';
+  csvData.columns.forEach(c=>{
+    const cl=c.toLowerCase();
+    const checked=(cl.includes('impression')||cl.includes('click')||cl.includes('cost'));
+    smArea.innerHTML+=`<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:12px;background:#fff"><input type="checkbox" value="${esc(c)}" ${checked?'checked':''}><span>${esc(c)}</span></label>`;
+  });
+  if(csvData.detected_mode){
+    const dm=csvData.detected_mode;
+    const ml={creative_performance:'Creative Performance',notification:'Notification / Message',funnel_performance:'Funnel Performance',hourly_performance:'Hourly Performance',channel_placement:'Channel / Placement',copy_message:'Copy / Message Analysis'};
+    let mh=`<span class="mode-tag">${ml[dm.mode]||dm.mode}</span>`;
+    if(dm.possible_modes.length>1) mh+=` <span style="font-size:11px;color:var(--g400);margin-left:6px">Also detected: ${dm.possible_modes.filter(m=>m!==dm.mode).map(m=>ml[m]||m).join(', ')}</span>`;
+    $('mode-det').innerHTML=mh;$('mode-det').classList.remove('hidden');
+  }
+  autoSuggestSM();
+  updateScoringForMode();
+  $('go-btn').disabled=!validateWeights();$('s2n').style.background='var(--ok)';
+  if(autoBd)parseNaming(autoBd);
+}
+
+function pickBreakdownColumn(columns){
+  const priority=['campaign_name','ad_name','ad','creative','creative_name','title','campaign','asset','banner'];
+  const lowerMap=new Map(columns.map(c=>[String(c).toLowerCase().trim(),c]));
+  for(const key of priority){if(lowerMap.has(key))return lowerMap.get(key)}
+  return columns.find(c=>/campaign|ad|creative|asset|banner|title/i.test(c))||columns[0]||'';
+}
+
+function isPrimaryMetricCandidate(col){
+  const c=String(col||'').toLowerCase();
+  return !(/ecpa|e_cpa|\bcpa\b|\bcpi\b|cost|spend|\brate\b|%|%cr|\bctr\b|\bcvr\b|roas|revenue|arpu/.test(c));
+}
+
+function onBdChange(){const v=$('bd').value;if(v&&csvData)parseNaming(v);else $('np-area').classList.add('hidden')}
+async function parseNaming(col){const samples=csvData.sample_rows.map(r=>r[col]).filter(Boolean).slice(0,5);if(!samples.length)return;$('np-area').classList.remove('hidden');$('np-sample').textContent=samples[0];try{const r=await apiFetch('/api/parse-naming',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({samples})});namingFields=(await readJsonSafe(r)).fields;renderNF()}catch(e){namingFields=samples[0].split(/[_\-]/).map((v,i)=>({index:i,value:v,meaning:`Field ${i+1}`}));renderNF()}}
+function reparseNaming(){const c=$('bd').value;if(c)parseNaming(c)}
+function renderNF(){
+  const sg=['Team','Date','Campaign ID','Optimization Event','Use Case / Creative','OS','Creative Date','Channel / Media','Creative Type','Format','Content ID','Version / Concept ID','Version','Size','Promotion','Budget Tier','Scheme','Segment','Script ID','Other'];
+  $('np-fields').innerHTML=namingFields.map((f,i)=>{
+    if(f.meaning==='Team Prefix')f.meaning='Team';
+    const isCustom=!sg.includes(f.meaning)||f.meaning==='Other';
+    const customVal=isCustom&&f.meaning!=='Other'?f.meaning:(f.custom_meaning||'');
+    return `<div class="nf"><div class="fl">Field ${i+1}</div><div class="vl">Value</div><div class="fv">${esc(f.value)}</div><div class="vl">Dropdown meaning</div>
+      <select onchange="onNFChange(${i},this.value)" style="width:100%;padding:3px 5px;font-size:11px;border:1px solid var(--g200);border-radius:4px;margin-top:3px">
+        ${sg.map(s=>`<option value="${s}" ${(isCustom&&s==='Other')||f.meaning===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <input type="text" id="nf-other-${i}" value="${esc(customVal)}" placeholder="Nhập ý nghĩa field..." oninput="onNFOther(${i},this.value)" style="${isCustom?'':'display:none;'}margin-top:4px;padding:4px 6px;font-size:11px;border-radius:4px">
+    </div>`;
+  }).join('');
+}
+function onNFChange(i,val){
+  const inp=$(`nf-other-${i}`);
+  if(val==='Other'){
+    namingFields[i].meaning=inp&&inp.value?inp.value:'Other';
+    if(inp){inp.style.display='block';inp.focus()}
+  }else{
+    namingFields[i].meaning=val;
+    namingFields[i].custom_meaning='';
+    if(inp)inp.style.display='none';
+  }
+}
+function onNFOther(i,val){namingFields[i].custom_meaning=val;namingFields[i].meaning=val||'Other'}
+function resetCSV(){csvData=null;csvFile=null;$('csv-pv').classList.add('hidden');csvDz.classList.remove('hidden');$('np-area').classList.add('hidden');$('mode-det').classList.add('hidden');$('go-btn').disabled=true;csvIn.value=''}
+
+// Images upload
+const imgDz=$('img-dz'),imgIn=$('img-in');
+const creativeFileInputRef=imgIn;
+imgDz.addEventListener('dragover',e=>{e.preventDefault();imgDz.classList.add('dragover')});
+imgDz.addEventListener('dragleave',()=>imgDz.classList.remove('dragover'));
+imgDz.addEventListener('drop',e=>{e.preventDefault();imgDz.classList.remove('dragover');handleCreativeFiles(e.dataTransfer.files)});
+creativeFileInputRef.addEventListener('change',e=>{
+  handleCreativeFiles(e.target.files);
+  e.target.value='';
+});
+let lastCreativeUploadKey='';
+function handleCreativeFiles(files){
+  console.log('[upload:creative] parsing start',files);
+  const uploadKey=Array.from(files||[]).map(f=>[f.name,f.size,f.lastModified].join('|')).join('||');
+  if(uploadKey&&uploadKey===lastCreativeUploadKey&&uploadedImages.length)return;
+  lastCreativeUploadKey=uploadKey;
+  let added=0;
+  Array.from(files||[]).forEach(f=>{
+    console.log('[upload:creative] selected',f.name,f.type,f.size);
+    if(['image/png','image/jpeg','image/webp'].includes(f.type)){
+      uploadedImages.push({file:f,url:URL.createObjectURL(f),name:f.name});
+      window.uploadedImages=uploadedImages;
+      added++;
+    }
+  });
+  renderImgs();
+  console.log('[upload:creative] parsing success',added);
+}
+setInterval(()=>{
+  if(!uploadedImages.length&&creativeFileInputRef.files&&creativeFileInputRef.files.length){
+    handleCreativeFiles(creativeFileInputRef.files);
+  }
+},500);
+window.handlePerformanceFiles=handlePerformanceFiles;
+window.handleCreativeFiles=handleCreativeFiles;
+window.handleCSV=handleCSV;
+window.showCSVPV=showCSVPV;
+window.parseNaming=parseNaming;
+function removeImg(i){URL.revokeObjectURL(uploadedImages[i].url);uploadedImages.splice(i,1);renderImgs()}
+function renderImgs(){$('img-pv').innerHTML=uploadedImages.map((img,i)=>`<div class="ic"><img src="${img.url}"><div class="il">${esc(img.name)}</div><button class="rb" onclick="removeImg(${i})">×</button></div>`).join('')}
+
+function getSelectedSM(){return Array.from(document.querySelectorAll('#sm-area input:checked')).map(cb=>cb.value)}
+
+async function runAnalysis(){
+  if(!csvFile||!validateWeights())return;
+  $('lo').classList.remove('hidden');$('lo-t').textContent='Đang phân tích...';
+  try{
+    const fd=new FormData;fd.append('file',csvFile);const w=objectiveWeights();
+    const bmRaw=$('cpa-b').value;const bmNum=parseFloat(bmRaw.replace(/[^0-9.]/g,''))||0;
+    const sc=getScoringConfig();
+    const denomEl=$('click-denom');const denomVal=denomEl?denomEl.value:'auto';
+    const cfg={product:$('product').value,goal:$('goal').value,channels:getSelectedChannels(),age_min:$('age-min').value,age_max:$('age-max').value,location:$('location').value,segment:$('segment').value,breakdown_dimension:$('bd').value,naming_fields:namingFields,primary_metric:$('pm').value,supporting_metrics:getSelectedSM(),cpa_benchmark:bmNum,currency:$('curr').value,qs_objective:$('qs-obj').value,qs_weight_ctr:w.ctr,qs_weight_cvr:w.cvr,qs_weight_cpa:w.cpa,scoring_config:sc,analysis_question:$('aq').value,has_images:uploadedImages.length>0,click_rate_denominator:denomVal};
+    fd.append('config',JSON.stringify(cfg));
+    uploadedImages.forEach(img=>fd.append('images',img.file));
+    const r=await apiFetch('/api/analyze',{method:'POST',body:fd});
+    const data=await readJsonSafe(r);
+    lastResult=data;lastMs=lastResult.metrics_summary||[];render();
+  }catch(e){alert('Analysis failed: '+e.message)}finally{$('lo').classList.add('hidden')}
+}
+
+function ccy(){return lastResult.display_currency||'USD'}
+function ccySymbol(){const c=ccy();return c==='VND'?'đ':c==='USD'?'$':c}
+function fmtCpa(v){const s=ccySymbol();return s==='đ'?`${v.toLocaleString()}đ`:s==='$'?`$${v.toLocaleString()}`:`${v.toLocaleString()} ${s}`}
+function formatRate(v){
+  if(v===null||v===undefined)return'N/A';
+  if(v===0)return'0.000%';
+  if(Math.abs(v)<1)return v.toFixed(3)+'%';
+  return v.toFixed(2)+'%';
+}
+function formatRateWithCount(v,count,label){
+  let s=formatRate(v);
+  if(v===0&&count!==undefined&&count!==null)s+=` · ${count} ${label||'tracked'}`;
+  return s;
+}
+function isNoti(){return lastResult&&lastResult.cpa_applicable===false}
+function rateMetricLabel(){return (lastResult&&lastResult.rate_metric_label)||'Action Rate'}
+function costMetricLabel(){return (lastResult&&lastResult.cost_metric_label)||'Cost per Action'}
+function primaryFormula(){return (lastResult&&lastResult.primary_metric_formula)||'Action Rate = selected Primary Metric(s) / Click'}
+function metricLine(m){
+  if(isNoti()){
+    const ma=lastResult.metric_availability||{};
+    const parts=[`%Sent ${formatRate(m.sent_rate_pct)}`];
+    if(ma.open!==false)parts.push(`Open ${formatRate(m.open_rate_pct)}`);
+    parts.push(`Click ${formatRate(m.ctr_pct)}`);
+    if(ma.payment!==false)parts.push(`Click→Payment ${formatRate(m.cvr_pct)}`);
+    return parts.join(' · ');
+  }
+  return `CTR ${(m.ctr_pct||0).toFixed(1)}% · ${rateMetricLabel()} ${(m.cvr_pct||0).toFixed(1)}% · ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)}`;
+}
+function entityText(m){
+  if(!isNoti())return '';
+  const bits=[];
+  if(m.title)bits.push(`<strong>Title:</strong> ${esc(m.title)}`);
+  if(m.description)bits.push(`<strong>Description:</strong> ${esc(m.description)}`);
+  if(m.promotion)bits.push(`<strong>Promotion:</strong> ${esc(m.promotion)}`);
+  return bits.length?`<div style="font-size:11px;color:var(--g600);margin-top:4px;line-height:1.5">${bits.join('<br>')}</div>`:'';
+}
+function findImg(entity){
+  const imgs=window.uploadedImages||uploadedImages||[];
+  const norm=s=>String(s||'').toLowerCase().replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]+/g,'');
+  const target=norm(entity);
+  if(!target||!imgs.length)return null;
+  // 1. exact filename-stem match (most reliable)
+  let hit=imgs.find(im=>norm(im.name)===target);
+  if(hit)return hit;
+  // 2. uploaded filename fully contained in the entity/card text — pick the LONGEST match
+  const contained=imgs.filter(im=>{const n=norm(im.name);return n&&target.includes(n);})
+    .sort((a,b)=>norm(b.name).length-norm(a.name).length);
+  if(contained.length)return contained[0];
+  // 3. entity is a fragment of the uploaded filename
+  hit=imgs.find(im=>{const n=norm(im.name);return n&&n.includes(target);});
+  return hit||null;
+}
+function dc(decision){
+  const d=String(decision||'').toUpperCase();
+  if(d.includes('SCALE'))return 'var(--ok)';
+  if(d.includes('MAINTAIN'))return 'var(--blue)';
+  if(d.includes('ITERATE'))return 'var(--purple)';
+  if(d.includes('INVESTIGATE')||d.includes('CHECK'))return 'var(--warn)';
+  if(d.includes('PAUSE'))return 'var(--err)';
+  return 'var(--g600)';
+}
+function dbClass(decision){return String(decision||'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'')||'MAINTAIN'}
+function chk(state,text){
+  const icon=state===true?'✓':state===false?'✕':'•';
+  const color=state===true?'var(--ok)':state===false?'var(--err)':'var(--warn)';
+  return `<div class="check-row"><span style="color:${color}">${icon}</span><span>${esc(text)}</span></div>`;
+}
+function sn(s){const v=String(s||'');return v.length>52?v.slice(0,49)+'...':v}
+function updateResultLabels(){
+  $('L1-title').textContent='Key Learning Summary';
+  $('L2-title').textContent='Winning → Why It Wins → Worst Signal';
+  $('L3-title').textContent=isNoti()?'Notification Key Takeaways':'Creative Key Takeaways';
+  $('L8-title').textContent=isNoti()?'Notification Details':'Creative Details';
+}
+function equalizeInsightBlocks(){
+  // Equalize green/red blocks across both comparison cards
+  const L2=document.getElementById('L2-body');if(!L2)return;
+  const pairs=[
+    ['.insight-block.green','.insight-block.red'],
+    ['.insight-block.blue','']
+  ];
+  // Get all insight-block.green and insight-block.red and make them same height
+  const greens=[...L2.querySelectorAll('.insight-block.green')];
+  const reds=[...L2.querySelectorAll('.insight-block.red')];
+  const blues=[...L2.querySelectorAll('.insight-block.blue')];
+  if(greens.length&&reds.length){
+    greens.forEach(el=>el.style.height='');reds.forEach(el=>el.style.height='');
+    const h=Math.max(...greens.map(e=>e.offsetHeight),...reds.map(e=>e.offsetHeight));
+    [...greens,...reds].forEach(el=>el.style.height=h+'px');
+  }
+  if(blues.length>1){
+    blues.forEach(el=>el.style.height='');
+    const h=Math.max(...blues.map(e=>e.offsetHeight));
+    blues.forEach(el=>el.style.height=h+'px');
+  }
+}
+function render(){$('R').classList.remove('hidden');$('R').scrollIntoView({behavior:'smooth'});updateResultLabels();renderWarnings();renderVC();renderL1();renderL2();renderL3();renderNH();renderFunnel();renderL6();renderL8();setTimeout(()=>{enhanceSummaryCards();equalizeInsightBlocks();normalizeProgrammaticUI();normalizeDetailFonts();enhanceQSTooltips()},50)}
+
+function qsTooltipText(){
+  if(isNoti())return 'QS = Quality Score. Được tính theo trọng số trong Advanced Support Metrics: Sent Rate, Click Rate và Conversion Rate/Open Rate tùy metric có trong file. Bạn có thể chỉnh trọng số ở mục Advanced Support Metrics.';
+  const w=objectiveWeights();
+  return `QS = Quality Score. Được tính theo công thức trong Advanced Support Metrics: CTR ${w.ctr}% + ${rateMetricLabel()} ${w.cvr}% + ${costMetricLabel()} ${w.cpa}%. Bạn có thể chỉnh trọng số ở mục Advanced Support Metrics.`;
+}
+function enhanceQSTooltips(){
+  const title=qsTooltipText();
+  document.querySelectorAll('.dqs,.dqs .l,[title*="Quality Score"],.summary-card .sc-title').forEach(el=>{
+    const txt=(el.textContent||'').trim();
+    if(txt==='QS'||txt.includes('Quality Score')||txt.includes('Scoring'))el.title=title;
+  });
+  document.querySelectorAll('*').forEach(el=>{
+    const txt=(el.textContent||'').trim();
+    if((txt==='QS'||txt==='Quality Score')&&!el.title)el.title=title;
+  });
+}
+
+function normalizeProgrammaticUI(){
+  if(isNoti())return;
+  const channels=(lastMs||[]).map(m=>String(m.channel||'').toLowerCase()).join(' ');
+  const isProgrammatic=/moloco|programmatic|display|dsp|in-app|other network/.test(channels)||getSelectedChannels().some(c=>/programmatic|dsp|other network/i.test(c));
+  if(!isProgrammatic)return;
+  decodeRenderedText($('R'));
+  enhanceComparisonPanels();
+  enhanceTakeaways();
+  hydrateThumbnails();
+}
+
+function decodeRenderedText(root){
+  if(!root)return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(n=>{const fixed=fixText(n.nodeValue);if(fixed!==n.nodeValue)n.nodeValue=fixed});
+}
+
+function emphasizeHtml(text, plain){
+  let safe=esc(text).replace(/\s*—\s*/g,'<br>').replace(/\n/g,'<br>');
+  // ngắt câu cho dễ đọc: sau dấu chấm + khoảng trắng, trước chữ cái hoa mở câu
+  safe=safe.replace(/\.\s+(?=[A-ZĐƯ])/g,'.<br>');
+  safe=safe.replace(/(^|<br>)(Signal:|Insight:|Action:|Strength:|Weakness:|Replicate:|Avoid:|Next Test:)/g,'$1<strong>$2</strong>');
+  // Bỏ auto-highlight trong box Action đã có nền màu: chỉ giữ label đậm, không tự bold Size/Offer/CTA hay tô màu sentiment.
+  if(!plain){
+    // bold domain keywords
+    safe=safe.replace(/\b(CTR|CVR|CPA|QS|SCALE|MAINTAIN|PAUSE|ITERATE HOOK|INVESTIGATE FUNNEL|Moloco|Programmatic|DSP|In-app Display|Size|Placement|Offer|CTA)\b/g,'<strong>$1</strong>');
+    // highlight số liệu
+    safe=safe.replace(/(\d+(?:\.\d+)?%|\$\d+(?:\.\d+)?|\d+(?:\.\d+)?x|\d+\s*creative)/g,'<span class="metric-highlight neutral">$1</span>');
+    // tô màu tín hiệu: tốt = xanh, vấn đề = đỏ.
+    safe=safe.replace(/(resonate|qualified|hiệu quả|nổi bật|thắng|tốt hơn|tốt|mạnh)/gi,'<span style="color:var(--ok);font-weight:600">$1</span>');
+    safe=safe.replace(/(chưa đủ|bottleneck|mismatch|không convert|kéo tụt|cạn|yếu|thấp|kém)/gi,'<span style="color:var(--err);font-weight:600">$1</span>');
+  }
+  return safe;
+}
+
+function enhanceSummaryCards(){
+  // KHÔNG emphasize next-step ở đây — nó được xử lý riêng bên dưới (split BƯỚC). Nếu emphasize 2 lần,
+  // lần 2 đọc textContent đã mất dấu "—"/". " (bị thay bằng <br>) → các bước dính vào nhau.
+  document.querySelectorAll('#L1 .summary-card:not(.next-step) .lfind').forEach(el=>{
+    el.innerHTML=emphasizeHtml(el.textContent);
+  });
+  const ns=document.querySelector('#L1 .summary-card.next-step .lfind');
+  if(ns){
+    const raw=fixText(ns.textContent).trim();
+    const marked=raw.replace(/\r/g,'').replace(/(^|\n)\s*(BƯỚC|Bước|STEP)\s+(\d+)\s*[\).—-]?\s*/g,(m,p,label,num)=>`${p}@@STEP@@${label.toUpperCase()} ${num}\n`);
+    const parts=marked.split('@@STEP@@').map(x=>x.trim()).filter(Boolean);
+    ns.classList.add('next-lines');
+    ns.innerHTML=(parts.length?parts:[ns.textContent]).map(x=>`<div class="next-line">${emphasizeHtml(x)}</div>`).join('');
+  }
+}
+
+function enhanceComparisonPanels(){
+  const body=$('L2-body');if(!body)return;
+  if(body.querySelector('.story-stack'))return;
+  const grid=body.querySelector('div[style*="grid-template-columns:1fr 1fr 1fr"]');
+  if(grid){grid.classList.add('compare-3');grid.style.gridTemplateColumns='repeat(3,minmax(0,1fr))'}
+  body.querySelectorAll(':scope > div > div').forEach(panel=>panel.classList.add('compare-panel'));
+  body.querySelectorAll('.citem').forEach(card=>{
+    card.style.minHeight='100%';
+    card.style.fontSize='13px';
+    card.style.lineHeight='1.55';
+  });
+  // chỉ ép chiều cao 76px cho header CÓ ảnh/decision (col Winning/Barrier); tránh tạo ô trống ở col Trigger
+  body.querySelectorAll('.citem > div:first-child').forEach(row=>{if(row.querySelector('img,.db,.cph'))row.style.minHeight='76px';});
+  // chuẩn hoá + tăng font body panel lên 13px cho dễ đọc, đồng nhất với dashboard (giữ QS 18px, header 13px)
+  body.querySelectorAll('[style*="font-size:10px"],[style*="font-size:11px"],[style*="font-size:12px"]').forEach(el=>{el.style.fontSize='13px'});
+}
+
+function normalizeDetailFonts(){
+  // đồng nhất + tăng font trong phần detail (expand) của danh sách creative
+  document.querySelectorAll('#L8 .dcard-body [style*="font-size:10px"],#L8 .dcard-body [style*="font-size:11px"],#L8 .dcard-body [style*="font-size:12px"]').forEach(el=>{el.style.fontSize='13px'});
+}
+
+function enhanceTakeaways(){
+  document.querySelectorAll('#L3 .lcard').forEach(card=>{
+    card.style.borderLeft='3px solid var(--pri)';
+    card.querySelectorAll('.lfind,.levid').forEach(el=>{el.innerHTML=emphasizeHtml(el.textContent)});
+    card.querySelectorAll('.lact').forEach(el=>{el.innerHTML=emphasizeHtml(el.textContent,true)});
+  });
+}
+
+function hydrateThumbnails(){
+  document.querySelectorAll('.citem,.dcard-hdr').forEach(card=>{
+    const text=card.textContent||'';
+    const img=findImg(text);
+    if(!img)return;
+    const ph=card.querySelector('.cph,.dph');
+    if(ph)ph.outerHTML=`<img class="thumb-img" src="${img.url}" alt="">`;
+  });
+}
+
+function renderWarnings(){
+  const w=[...(lastResult.warnings||[])];
+  const ma=lastResult.metric_availability||{};
+  const sn=lastResult.qs_scoring_note;
+  if(isNoti()){
+    const parts=[];
+    const avail=[];
+    if(ma.sent!==false)avail.push('Sent');
+    if(ma.success!==false)avail.push('Success');
+    if(ma.click)avail.push('Click / Click Rate');
+    if(ma.open)avail.push('Open');
+    if(ma.payment)avail.push('Payment');
+    if(avail.length)parts.push('Using available metrics: '+avail.join(' / ')+'.');
+    if(!ma.open||!ma.payment){
+      const miss=[];
+      if(!ma.open)miss.push('Open');
+      if(!ma.payment)miss.push('Payment');
+      parts.push('Missing '+miss.join('/')+' moved to recommendation.');
+    }
+    if(sn)parts.push(sn);
+    w.forEach(x=>{if(x.indexOf('CPA')>=0||x.indexOf('owned/free')>=0)parts.push(x)});
+    const otherW=w.filter(x=>x.indexOf('CPA')<0&&x.indexOf('owned/free')<0);
+    const summaryLine=parts.join(' ');
+    let html='<details style="margin-bottom:12px"><summary style="cursor:pointer;padding:8px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:8px;font-size:12px;color:var(--g600);list-style:none;display:flex;align-items:center;gap:6px"><span style="font-size:11px">📋</span><span style="flex:1"><strong>Data Notes:</strong> '+esc(summaryLine.substring(0,200))+'</span><span style="font-size:10px;color:var(--pri)">View details</span></summary>';
+    html+='<div style="padding:8px 12px;border:1px solid var(--g200);border-top:0;border-radius:0 0 8px 8px;font-size:12px;color:var(--g600)">';
+    otherW.forEach(x=>{html+='<div style="padding:3px 0">'+esc(x)+'</div>'});
+    html+='</div></details>';
+    $('warn-area').innerHTML=html;
+  } else {
+    if(sn)w.push(sn);
+    $('warn-area').innerHTML=w.length?`<div class="warning-stack">${w.map(x=>`<div class="warning-item"><span class="wi">⚠</span><span>${esc(x)}</span></div>`).join('')}</div>`:'';
+  }
+}
+
+function renderVC(){
+  if(isNoti()){$('VC').classList.add('hidden');return}
+  const vc=lastResult.variance_check||[];
+  if(!vc.length){$('VC').classList.add('hidden');return}
+  $('VC').classList.remove('hidden');
+  $('VC-body').innerHTML=vc.map(v=>{
+    const dims=v.different_dimensions||[];
+    return `<div class="lcard" style="border-left:3px solid var(--warn)">
+      <div class="ldim" style="color:var(--warn)">Concept: "${esc(v.concept)}" (${v.count} creative)</div>
+      <div style="font-size:12px;margin-top:6px">
+        <strong>Metric spread:</strong> CTR ${v.ctr_spread_pp}pp · CVR ${v.cvr_spread_pp}pp · CPA ${v.cpa_spread_ratio}x
+      </div>
+      <div style="font-size:12px;margin-top:4px">
+        <strong>Dimension khác nhau:</strong> ${dims.map(d=>esc(d)).join(', ')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div style="padding:6px 8px;background:var(--ok-l);border-radius:6px;font-size:11px">
+          <strong style="color:var(--ok)">Best:</strong> ${esc(v.best.entity)}<br>
+          CTR ${v.best.ctr}% · CVR ${v.best.cvr}% · CPA ${fmtCpa(v.best.cpa)}
+        </div>
+        <div style="padding:6px 8px;background:var(--err-l);border-radius:6px;font-size:11px">
+          <strong style="color:var(--err)">Worst:</strong> ${esc(v.worst.entity)}<br>
+          CTR ${v.worst.ctr}% · CVR ${v.worst.cvr}% · CPA ${fmtCpa(v.worst.cpa)}
+        </div>
+      </div>
+      ${v.warning?`<div class="alert alert-warn" style="margin-top:8px;margin-bottom:0">${esc(v.warning)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function mChip(label,value,cls){return `<span class="metric-chip ${cls||''}"><span class="mc-label">${esc(label)}</span>${esc(value)}</span>`}
+function mChipRate(label,rawVal){
+  if(rawVal===null||rawVal===undefined)return mChip(label,'N/A','na');
+  const v=rawVal;const formatted=formatRate(v);
+  const cls=v>1?'good':v>0?'warn':'risk';
+  return mChip(label,formatted,cls);
+}
+
+function renderL1(){
+  const kl=lastResult.key_learning;if(!kl){$('L1-body').innerHTML='';return}
+  const ac=lastResult.audience_context||{};const w=objectiveWeights();
+  const st=kl.structured;
+  let b='';
+
+  if(isNoti()&&st){
+    const bm=st.best_metrics||{};
+    const wm=st.worst_metrics||{};
+    const ma=lastResult.metric_availability||{};
+    const hoData=st.has_open_data;
+    const hpData=st.has_payment_data;
+    // ── 3-column layout: Winning | Trigger | Barrier ──
+    const segNote=ac.segment&&ac.segment!=='Not specified'?`Segment: ${esc(ac.segment)}.`:'';
+    const ageNote=ac.age_range?`${esc(ac.age_range)} tuổi, ${esc(ac.location||'')}.`:'';
+    b+='<div class="summary-grid">';
+
+    // Col 1: Winning
+    b+='<div class="summary-card key-learning">';
+    b+='<div class="sc-title">🏆 Winning</div>';
+    b+=`<div class="sc-entity" style="font-size:12px;font-weight:700;margin-bottom:8px">${esc((st.best_title||st.best_entity||'').substring(0,70))}</div>`;
+    b+='<div class="signal-badges" style="margin-top:4px">';
+    if(st.promo_trigger&&st.promo_trigger!=='No explicit promotion detected')b+=`<span class="signal-badge good">Promotion trigger</span>`;
+    if(bm.click_rate_pct>0)b+='<span class="signal-badge good">Click signal</span>';
+    if(hoData&&bm.open_rate_pct>0)b+='<span class="signal-badge good">Open signal</span>';
+    if(hpData&&bm.click_to_payment_pct>0)b+=`<span class="signal-badge good">Payment signal</span>`;
+    b+='</div>';
+    b+='<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">';
+    if(hoData)b+=mChipRate('Open Rate',bm.open_rate_pct);
+    b+=mChipRate('Click Rate',bm.click_rate_pct);
+    if(hpData)b+=mChipRate('Payment Rate',bm.click_to_payment_pct);
+    b+='</div>';
+    if(lastResult.click_rate_formula)b+=`<div style="font-size:10px;color:var(--g400);margin-top:4px">Click Rate = ${esc(lastResult.click_rate_formula)}</div>`;
+    if(segNote||ageNote)b+=`<div style="margin-top:8px;padding:6px 8px;background:var(--pri-l);border-radius:6px;font-size:11px;color:#1e40af"><strong>Audience:</strong> ${segNote} ${ageNote}</div>`;
+    b+='</div>';
+
+    // Col 2: Trigger (what made it win)
+    b+='<div class="summary-card" style="border-left:4px solid #f59e0b">';
+    b+='<div class="sc-title" style="color:#b45309">⚡ Trigger</div>';
+    const triggerChips=[];
+    if(st.title_trigger)triggerChips.push(['Headline',st.title_trigger]);
+    if(st.desc_trigger&&st.desc_trigger!=='description missing')triggerChips.push(['Description',st.desc_trigger]);
+    if(st.promo_trigger&&st.promo_trigger!=='No explicit promotion detected')triggerChips.push(['Promotion',st.promo_trigger]);
+    if(st.best_hour)triggerChips.push(['Best send time',st.best_hour]);
+    triggerChips.forEach(([k,v])=>{
+      b+=`<div style="margin-top:6px"><span style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--g500)">${esc(k)}</span><div style="font-size:12px;font-weight:600;color:#78350f;margin-top:2px;padding:4px 8px;background:#fef3c7;border-radius:4px">${esc(v)}</div></div>`;
+    });
+    if(segNote)b+=`<div style="margin-top:8px;font-size:11px;color:var(--g600)"><strong>Phù hợp segment:</strong> ${segNote} Message cần match với context và ngôn ngữ của nhóm này.</div>`;
+    b+='</div>';
+
+    // Col 3: Barrier (bottleneck)
+    b+='<div class="summary-card bottleneck">';
+    b+='<div class="sc-title">🚧 Barrier</div>';
+    const bnTitle=st.tracking_anomaly?'Tracking issue':esc((st.worst_entity||'').substring(0,50));
+    b+=`<div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--err)">${bnTitle}</div>`;
+    b+='<div class="signal-badges" style="margin-top:4px">';
+    if(st.tracking_anomaly)b+='<span class="signal-badge warn">Open tracking check</span>';
+    if(wm.click_rate_pct===0)b+='<span class="signal-badge risk">No click signal</span>';
+    if(hpData&&bm.click_to_payment_pct===0)b+='<span class="signal-badge risk">Payment Rate = 0.000%</span>';
+    b+='</div>';
+    b+='<ul style="margin-top:8px">';
+    (st.bottleneck_bullets||[]).forEach(item=>{b+=`<li>🔴 ${esc(item.text)}</li>`});
+    b+='</ul>';
+    b+='</div>';
+
+    b+='</div>'; // close 3-col summary-grid
+
+    // ── Next Step: full-width, connected to trigger + segment ──
+    b+='<div class="summary-card next-step" style="margin-top:12px;border-left:4px solid var(--pri)">';
+    b+='<div class="sc-title">🔵 Next Step</div>';
+    b+='<ol style="margin-top:4px">';
+    (st.next_step_items||[]).forEach(item=>{
+      let text=esc(item);
+      text=text.replace(/(benefit-led|urgency-led|use-case-led)/g,'<strong>$1</strong>');
+      text=text.replace(/(\d{2}:\d{2})/g,'<span class="metric-highlight neutral">$1</span>');
+      b+=`<li style="margin-bottom:8px">${text}</li>`;
+    });
+    b+='</ol>';
+    if(segNote)b+=`<div style="margin-top:8px;padding:6px 8px;background:var(--g50);border-radius:6px;font-size:11px;color:var(--g600)">💡 Segment context: ${segNote} ${ageNote} — Khi viết copy variant, đặt scenario cụ thể của nhóm này vào title/description.</div>`;
+    b+='</div>';
+  } else {
+    b+='<div class="summary-grid">';
+    b+=`<div class="summary-card key-learning"><div class="sc-title">✅ Key Learning</div><div class="lfind" style="white-space:pre-line">${esc(kl.learning)}</div></div>`;
+    b+=`<div class="summary-card bottleneck"><div class="sc-title">⚠️ Bottleneck</div><div class="lfind" style="white-space:pre-line">${esc(kl.bottleneck)}</div></div>`;
+    b+=`<div class="summary-card next-step"><div class="sc-title">🔵 Next Step</div><div class="lfind" style="white-space:pre-line">${esc(kl.next_step)}</div></div>`;
+    b+='</div>';
+  }
+
+  if(ac.segment==='Not specified') b+=`<div class="alert alert-warn" style="margin-top:10px">Segment chưa được nhập. Thêm segment (deal seeker, student, online shopper...) để chẩn đoán sắc hơn.</div>`;
+  if(isNoti()){
+    // Data limitation note — compact, below summary
+    const dlNote=st?st.data_limitation_note:'';
+    const recData=st?(st.recommended_data||[]):[];
+    if(dlNote||recData.length){
+      b+='<div style="margin-top:10px;padding:8px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:8px;font-size:11px;color:var(--g600)">';
+      if(dlNote)b+=`<div><strong>Data limitation:</strong> ${esc(dlNote)}</div>`;
+      if(recData.length){
+        b+='<div style="margin-top:4px"><strong>Recommended data to add:</strong> ';
+        b+=recData.map(r=>esc(r)).join('; ')+'.';
+        b+='</div>';
+      }
+      b+='</div>';
+    }
+    const wt=lastResult.qs_weights||{};
+    const wtParts=Object.entries(wt).map(([k,v])=>`${k} ${Math.round(v*100)}%`).join(' + ');
+    b+=`<div style="font-size:11px;color:var(--g400);margin-top:8px">Scoring: ${esc(wtParts)}. CPA không áp dụng vì notification là free traffic.</div>`;
+  }
+  else b+=`<div style="font-size:11px;color:var(--g400);margin-top:8px">Scoring: ${esc(w.label)} — CTR ${w.ctr}% + ${esc(rateMetricLabel())} ${w.cvr}% + ${esc(costMetricLabel())} ${w.cpa}%</div>`;
+  $('L1-body').innerHTML=b;
+}
+
+// ═══ L2: Best Signal vs Worst Signal ═══
+// L1 override: keep Notification summary compact so it does not duplicate L2 storytelling.
+function renderL1(){
+  const kl=lastResult.key_learning;if(!kl){$('L1-body').innerHTML='';return}
+  const ac=lastResult.audience_context||{};const w=objectiveWeights();
+  let b='<div class="summary-grid">';
+  b+=`<div class="summary-card key-learning"><div class="sc-title">✅ Key Learning</div><div class="lfind" style="white-space:pre-line">${esc(normalizeInsightCopy(kl.learning||''))}</div></div>`;
+  b+=`<div class="summary-card bottleneck"><div class="sc-title">⚠️ Bottleneck</div><div class="lfind" style="white-space:pre-line">${esc(normalizeInsightCopy(kl.bottleneck||''))}</div></div>`;
+  b+=`<div class="summary-card next-step"><div class="sc-title">🔵 Next Step</div><div class="lfind" style="white-space:pre-line">${esc(normalizeInsightCopy(kl.next_step||''))}</div></div>`;
+  b+='</div>';
+  if(ac.segment==='Not specified') b+=`<div class="alert alert-warn" style="margin-top:10px">Segment chưa được nhập. Thêm segment (deal seeker, student, online shopper...) để chẩn đoán sắc hơn.</div>`;
+  if(isNoti()){
+    const st=kl.structured||{};const dlNote=st.data_limitation_note||'';const recData=st.recommended_data||[];
+    if(dlNote||recData.length){
+      b+='<div style="margin-top:10px;padding:8px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:8px;font-size:11px;color:var(--g600)">';
+      if(dlNote)b+=`<div><strong>Data limitation:</strong> ${esc(normalizeInsightCopy(dlNote))}</div>`;
+      if(recData.length)b+=`<div style="margin-top:4px"><strong>Recommended data to add:</strong> ${recData.map(r=>esc(normalizeInsightCopy(r))).join('; ')}.</div>`;
+      b+='</div>';
+    }
+    const wt=lastResult.qs_weights||{};const wtParts=Object.entries(wt).map(([k,v])=>`${k} ${Math.round(v*100)}%`).join(' + ');
+    b+=`<div style="font-size:11px;color:var(--g400);margin-top:8px" title="${esc(qsTooltipText())}">Scoring: ${esc(wtParts)}. CPA không áp dụng vì notification là free traffic.</div>`;
+  }else{
+    b+=`<div style="font-size:11px;color:var(--g400);margin-top:8px" title="${esc(qsTooltipText())}">Scoring: ${esc(w.label)} — CTR ${w.ctr}% + ${esc(rateMetricLabel())} ${w.cvr}% + ${esc(costMetricLabel())} ${w.cpa}%</div>`;
+  }
+  $('L1-body').innerHTML=b;
+}
+
+function renderL2(){
+  const valid=isNoti()?lastMs:lastMs.filter(m=>!m.warning);
+  if(valid.length<2){$('L2-body').innerHTML='<div style="color:var(--g400);font-size:13px">Cần ít nhất 2 entity để so sánh.</div>';return}
+  const sorted=[...valid].sort((a,b)=>b.quality_score-a.quality_score);
+  $('L2-body').innerHTML=isNoti()?renderNotificationComparison(sorted[0],sorted[sorted.length-1]):renderCreativeComparison(sorted[0],sorted[sorted.length-1]);
+}
+
+function renderCreativeComparison(best,worst){
+  const kl=lastResult.key_learning||{};
+  const winning=kl.winning||null;
+  const trigger=kl.trigger||null;
+  const barrier=kl.barrier||null;
+  const skill=trigger&&trigger.channel_skill?trigger.channel_skill:null;
+
+  // ── Col 1: Winning ─────────────────────────────────────
+  const imgB=findImg(best.entity);
+  const imgH=imgB?`<img src="${imgB.url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">`:`<div class="cph" style="width:56px;height:56px;font-size:10px">No asset</div>`;
+  const insB=getBestInsight(best);
+  const col1=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--ok)">🏆 Winning</div>
+    <div class="citem" style="flex-direction:column;padding:12px;flex:1">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        ${imgH}
+        <div style="flex:1;min-width:0">
+          <span class="db db-${dbClass(best.decision)}">${best.decision}</span>
+          <div style="font-size:11px;font-weight:600;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sn(best.entity))}</div>
+          <div style="font-size:10px;color:var(--g400);margin-top:1px">${best.channel||''} ${best.os||''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:700;color:var(--ok)">${(best.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1" title="Quality Score = CTR×15% + CVR×45% + CPA×40% — đổi trọng số ở mục Scoring/Objective bên dưới">Quality Score</div></div>
+      </div>
+      ${metricBadges(best)}
+      <div style="font-size:11px;margin-top:8px;line-height:1.5"><strong>Data Evidence:</strong><br>${insB.evidence}</div>
+      <div style="font-size:11px;margin-top:6px"><strong class="strength-line">Strength:</strong><br>${insB.strength}</div>
+      <div style="font-size:11px;margin-top:6px"><strong class="weakness-line">Weakness:</strong><br>${insB.weakness}</div>
+      <div class="insight-block green" style="margin-top:8px"><strong>Replicate:</strong><br>${insB.replicate}</div>
+    </div>
+  </div>`;
+
+  // ── Col 2: Trigger / Channel Skill ─────────────────────
+  let skillHTML='';
+  if(skill){
+    const dims=(skill.specific_analysis||[]).map(d=>`
+      <div style="border-left:3px solid ${d.signal==='ok'?'var(--ok)':'var(--warn,#f59e0b)'};padding:6px 8px;margin-top:6px;background:var(--s50,#f8fafc);border-radius:0 4px 4px 0">
+        <div style="font-size:11px;font-weight:600">${d.icon||'•'} ${esc(d.dim)}</div>
+        <div style="font-size:11px;color:var(--g600);margin-top:2px">${esc(d.finding)}</div>
+        <div style="font-size:10px;color:var(--pri);margin-top:3px;font-style:italic">→ ${esc(d.action)}</div>
+      </div>`).join('');
+    skillHTML=`<div style="font-size:10px;color:var(--g400);margin-bottom:4px">📊 Phân tích theo: <strong>${esc(skill.analysis_order||'')}</strong></div>
+      <div style="font-size:11px;background:var(--pri-l,#eff6ff);padding:6px 8px;border-radius:4px;margin-bottom:4px">${esc(skill.key_insight||'')}</div>
+      ${dims}
+      ${skill.gap_note?`<div style="font-size:10px;color:var(--warn,#d97706);margin-top:6px;padding:4px 6px;border-radius:4px;background:#fffbeb">⚡ ${esc(skill.gap_note)}</div>`:''}`;
+  } else {
+    const insB2=getBestInsight(best);
+    skillHTML=`<div style="font-size:11px">${insB2.insight}</div>`;
+  }
+  const col2=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--pri)">⚡ Trigger / Channel Skill</div>
+    <div class="citem" style="flex-direction:column;padding:12px;flex:1">
+      ${skill?`<div style="font-size:12px;font-weight:600;color:var(--pri);margin-bottom:6px">${esc(skill.channel||'Channel Analysis')}</div>`:''}
+      ${skillHTML}
+    </div>
+  </div>`;
+
+  // ── Col 3: Barrier ─────────────────────────────────────
+  const imgW=findImg(worst.entity);
+  const imgWH=imgW?`<img src="${imgW.url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">`:`<div class="cph" style="width:56px;height:56px;font-size:10px">No asset</div>`;
+  const insW=getWorstInsight(worst);
+  const col3=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--err)">🚧 Barrier / Worst Signal</div>
+    <div class="citem" style="flex-direction:column;padding:12px;flex:1">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        ${imgWH}
+        <div style="flex:1;min-width:0">
+          <span class="db db-${dbClass(worst.decision)}">${worst.decision}</span>
+          <div style="font-size:11px;font-weight:600;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sn(worst.entity))}</div>
+          <div style="font-size:10px;color:var(--g400);margin-top:1px">${worst.channel||''} ${worst.os||''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:700;color:var(--err)">${(worst.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1" title="Quality Score = CTR×15% + CVR×45% + CPA×40% — đổi trọng số ở mục Scoring/Objective bên dưới">Quality Score</div></div>
+      </div>
+      ${metricBadges(worst)}
+      <div style="font-size:11px;margin-top:8px"><strong class="weakness-line">Weakness:</strong><br>${insW.weakness}</div>
+      <div style="font-size:11px;margin-top:6px"><strong>Insight:</strong><br>${insW.insight}</div>
+      <div class="insight-block red" style="margin-top:8px"><strong>Avoid:</strong><br>${insW.replicate}</div>
+      <div class="insight-block blue" style="margin-top:6px"><strong>Next Test:</strong><br>${insW.nextTest}</div>
+    </div>
+  </div>`;
+
+  // ── Next Step (full width) ──────────────────────────────
+  const ns=(kl.next_step||'').trim();
+  let nsHTML='';
+  if(ns){
+    if(ns.includes('BƯỚC 2')||ns.includes('BƯỚC 1')){
+      const parts=ns.split(/\n(?=BƯỚC)/);
+      nsHTML='<ol style="margin:6px 0 0 18px;padding:0;font-size:12px;line-height:1.6">'
+        +parts.map(p=>`<li style="margin-bottom:6px">${esc(p.replace(/^BƯỚC \d+ — /,''))}</li>`).join('')
+        +'</ol>';
+    } else {
+      nsHTML=`<div style="font-size:12px;line-height:1.6">${esc(ns)}</div>`;
+    }
+  }
+  const nextRow=ns?`<div class="insight-block blue" style="margin-top:12px;padding:12px">
+    <div style="font-weight:700;margin-bottom:4px">🔵 Next Step</div>${nsHTML}
+  </div>`:'';
+
+  return `<div style="grid-column:1/-1;display:flex;flex-direction:column;gap:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start">
+      ${col1}${col2}${col3}
+    </div>
+  </div>`;
+}
+
+function renderNotificationComparison(best,worst){
+  const ma=lastResult.metric_availability||{};
+  function ncard(m,isBest){
+    const ins=isBest?getNotificationBestInsight(m):getNotificationWeakInsight(m);
+    const color=isBest?'var(--ok)':'var(--err)';
+    const rewrites=(ins.rewrites||[]).map(x=>`<li>${esc(x)}</li>`).join('');
+    return `<div>
+      <div style="font-size:14px;font-weight:600;color:${color};margin-bottom:10px">${isBest?'Best Notification':'Weak Notification'}</div>
+      <div class="citem" style="flex-direction:column;padding:14px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1;min-width:0"><span class="db db-${dbClass(m.decision)}">${m.decision}</span>
+            <div style="font-size:13px;font-weight:700;margin-top:5px">${esc(m.title||sn(m.entity))}</div>
+            <div style="font-size:12px;color:var(--g600);margin-top:3px;line-height:1.45">${esc(m.description||'No description mapped')}</div>
+          </div>
+          <div style="text-align:right"><div style="font-size:20px;font-weight:700;color:${color}">${(m.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1" title="Quality Score = CTR×15% + CVR×45% + CPA×40% — đổi trọng số ở mục Scoring/Objective bên dưới">Quality Score</div></div>
+        </div>
+        ${notificationBadges(m)}
+        <div class="kv-grid">
+          <div><strong>Promotion</strong>${esc(m.promotion||'No explicit promotion detected')}</div>
+          <div><strong>Send time</strong>${esc(m.send_time||'N/A')}</div>
+          <div><strong>Sent volume</strong>${(m.sent||0).toLocaleString()} sent · ${formatRate(m.sent_rate_pct)} success</div>
+          <div><strong>Funnel</strong>${ma.open?`Open ${formatRateWithCount(m.open_rate_pct,m.open,'opens tracked')} · `:''}Click ${formatRate(m.ctr_pct)}${ma.payment?` · Click→Payment ${formatRate(m.cvr_pct)}`:''}</div>
+        </div>
+        <div style="font-size:12px;margin-top:10px"><strong>Trigger Analysis:</strong><br>${esc(ins.trigger)}</div>
+        <div style="font-size:12px;margin-top:6px"><strong class="strength-line">Strength:</strong><br>${esc(ins.strength)}</div>
+        <div style="font-size:12px;margin-top:6px"><strong class="weakness-line">${isBest?'Weakness':'Missing trigger / Why weak'}:</strong><br>${esc(ins.weakness)}</div>
+        <div style="font-size:12px;margin-top:6px"><strong>Insight:</strong><br>${esc(ins.insight)}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;flex:1">
+          <div class="insight-block ${isBest?'green':'red'}" style="margin:0;flex:1"><strong>${isBest?'Replicate:':'Avoid:'}</strong><br>${esc(ins.replicate)}</div>
+          <div class="insight-block blue" style="margin:0;flex:1"><strong>${isBest?'Next Test':'Rewrite suggestion'}:</strong>${rewrites?`<ol class="rewrite-list">${rewrites}</ol>`:`<br>${esc(ins.nextTest)}`}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  return ncard(best,true)+ncard(worst,false);
+}
+
+function metricBadges(m){
+  const badges=[];
+  if((m.ctr_pct||0)>=2)badges.push(['good',`CTR ${(m.ctr_pct||0).toFixed(1)}% good`]);
+  else badges.push(['warn',`CTR ${(m.ctr_pct||0).toFixed(1)}% watch`]);
+  if((m.cvr_pct||0)>=5)badges.push(['good',`${rateMetricLabel()} ${(m.cvr_pct||0).toFixed(1)}% good`]);
+  else badges.push(['risk',`${rateMetricLabel()} ${(m.cvr_pct||0).toFixed(1)}% risk`]);
+  if(m.warning)badges.push(['warn',m.warning]);
+  badges.push(['action',m.decision||'Review']);
+  return `<div class="signal-badges">${badges.map(([c,t])=>`<span class="signal-badge ${c}">${esc(t)}</span>`).join('')}</div>`;
+}
+
+function notificationBadges(m){
+  const badges=[];
+  const ma=lastResult.metric_availability||{};
+  if((m.sent_rate_pct||0)>=95)badges.push(['good',`%Sent ${formatRate(m.sent_rate_pct)}`]);
+  else badges.push(['warn',`%Sent ${formatRate(m.sent_rate_pct)}`]);
+  if(ma.open===false)badges.push(['warn','No Open data']);
+  else if((m.open_rate_pct||0)<=0&&(m.ctr_pct||0)>0)badges.push(['warn','Open tracking check needed']);
+  if(ma.click!==false){
+    if((m.ctr_pct||0)>0)badges.push(['good',`Click ${formatRate(m.ctr_pct)}`]);
+    else badges.push(['risk','No click signal']);
+  }
+  if(ma.payment===false)badges.push(['warn','No Payment data']);
+  else if((m.cvr_pct||0)>0)badges.push(['good',`Click→Payment ${formatRate(m.cvr_pct)}`]);
+  else badges.push(['warn','Payment Rate 0.000%']);
+  badges.push(['action',m.decision||'Review']);
+  return `<div class="signal-badges">${badges.map(([c,t])=>`<span class="signal-badge ${c}">${esc(t)}</span>`).join('')}</div>`;
+}
+
+function notificationTriggerType(m){
+  const txt=`${m.title||''} ${m.description||''} ${m.promotion||''}`.toLowerCase();
+  if(/\d+\s?k|%|voucher|cashback|giảm|ưu đãi|hoàn tiền/.test(txt))return 'promotion / offer';
+  if(/hôm nay|ngay|sắp|deadline|đến hạn|limited|cuối/.test(txt))return 'urgency';
+  if(/học phí|tiktok|shop|thanh toán|nạp|bill|qr|điện|nước/.test(txt))return 'use case';
+  return 'generic benefit';
+}
+
+function getNotificationBestInsight(m){
+  const trigger=notificationTriggerType(m);
+  const ma=lastResult.metric_availability||{};
+  const hasPayment=ma.payment!==false;
+  const hasOpen=ma.open!==false;
+  return {
+    trigger:`Trigger chính: ${trigger}. ${hasOpen?'Có thể đọc thêm Open Rate nếu đã map đúng cột Open.':'Open data not available — chưa thể đánh giá title performance bằng Open Rate.'}`,
+    strength:hasPayment?'Có tín hiệu tốt ở click hoặc click-to-payment; message đủ rõ để kéo user vào bước tiếp theo.':'Có click signal trong dữ liệu hiện có; message đủ tạo phản hồi ở bước click.',
+    weakness:hasPayment?((m.cvr_pct||0)>0?'Vẫn cần test xem title hay send time là driver chính, tránh scale chỉ dựa vào một lần gửi.':'Payment Rate = 0.000% dù Payment/Login column tồn tại; cần kiểm tra conversion path.'):'Payment data not available — chưa thể đánh giá downstream payment quality.',
+    insight:hasPayment?'Notification thắng khi title nói rõ user nhận gì và description giải thích hành động tiếp theo. Với owned channel, trigger phải cụ thể hơn generic awareness.':'Hiện tại chỉ có thể đánh giá theo Click Rate. File chưa có Payment/Login downstream nên chưa thể kết luận notification có tạo conversion quality hay không. Cần bổ sung Payment/Login event trước khi audit deep link.',
+    replicate:'Giữ cấu trúc: benefit cụ thể + use case/action + promotion nếu có.',
+    nextTest:hasPayment?'Test cùng message ở 2-3 khung giờ top, sau đó test title có/không promotion để isolate trigger.':'Bổ sung Open và Payment/Login event, sau đó phân tích lại funnel Sent → Open → Click → Login/Payment.'
+  };
+}
+
+function getNotificationWeakInsight(m){
+  const noPromo=!m.promotion||m.promotion==='No explicit promotion detected';
+  const title=m.title||'Notification title';
+  const ma=lastResult.metric_availability||{};
+  const hasPayment=ma.payment!==false;
+  return {
+    trigger:`Missing trigger: ${noPromo?'promotion cụ thể':'CTA/action rõ ràng'}; title chưa cho user đủ lý do mở hoặc click.`,
+    strength:ma.open!==false?'Có thể vẫn học được về timing/delivery nếu %Sent hoặc Open Rate bất thường.':'Có thể vẫn học được theo %Sent và Click Rate; chưa thể đánh giá title bằng Open Rate.',
+    weakness:'Title/description đang quá generic hoặc nêu pain point nhưng chưa nói rõ user nhận gì ngay lập tức.',
+    insight:hasPayment?'Nếu title chỉ nói vấn đề mà không có offer/action cụ thể, user không có động lực mở notification. Cần rewrite theo benefit + action.':'Nếu title chỉ nói vấn đề mà không có offer/action cụ thể, user có thể không click. Hiện chưa có Payment/Login data nên không kết luận conversion quality.',
+    replicate:'Tránh title chung chung, tránh pain point không gắn với reward hoặc hành động cụ thể.',
+    rewrites:[
+      title.toLowerCase().includes('học')?'Đóng học phí trước, trả sau cùng ZaloPay':'Mở ZaloPay để nhận ưu đãi hôm nay',
+      title.toLowerCase().includes('học')?'Giảm áp lực học phí, mở ZaloPay xem ưu đãi':'Nhận ưu đãi ngay khi thanh toán bằng ZaloPay',
+      title.toLowerCase().includes('học')?'Học phí đến hạn? Thanh toán linh hoạt ngay':'Ưu đãi sắp hết hạn, mở ZaloPay để kiểm tra'
+    ]
+  };
+}
+
+// L2 storytelling override: Winning -> Why It Wins -> Worst Signal.
+// Channel skill is intentionally not rendered here; deep channel/dimension analysis belongs in Creative Key Takeaways.
+function creativeProofParts(m){
+  const entity=String(m&&m.entity||'');
+  const parts=[];
+  const offer=(entity.match(/(\d+)\s*[Kk]/)||[])[1];
+  const size=(entity.match(/(\d{2,4})[xX×](\d{2,4})/)||[]).slice(1,3).join('x');
+  const version=(entity.match(/(?:^|_)V(\d+)(?:_|\.|$)/i)||[])[1];
+  const lower=entity.toLowerCase();
+  let useCase='';
+  if(lower.includes('tiktokshop')||lower.includes('tiktok_shop')||lower.includes('tiktok shop'))useCase='TikTok Shop';
+  else if(lower.includes('grab'))useCase='Grab';
+  else if(lower.includes('scan')||lower.includes('qr'))useCase='Scan QR';
+  else if(lower.includes('bill'))useCase='Bill payment';
+  if(offer)parts.push(`offer ${offer}K`);
+  if(useCase)parts.push(`use case ${useCase}`);
+  if(size)parts.push(`size ${size}`);
+  if(version)parts.push(`version V${version}`);
+  return {offer,size,version,useCase,label:parts.length?parts.join(' + '):'creative naming'};
+}
+
+function normalizeInsightCopy(text){
+  let s=String(text||'');
+  s=s.replace(/in-app inventory/gi,'placement trong app');
+  s=s.replace(/banner inventory/gi,'banner placement');
+  s=s.replace(/inventory/gi,'placement');
+  s=s.replace(/thumb-stop/gi,'kéo attention');
+  s=s.replace(/first-frame/gi,'visual mở đầu');
+  s=s.replace(/first frame/gi,'visual mở đầu');
+  s=s.replace(/scale nguyên bản/gi,'tăng budget trực tiếp cho đúng asset hiện tại');
+  s=s.replace(/nguyên bản/gi,'asset hiện tại');
+  s=s.replace(/qualified intent/gi,'intent chất lượng');
+  return s;
+}
+
+function renderCreativeComparison(best,worst){
+  const kl=lastResult.key_learning||{};
+  const imgB=findImg(best.entity);
+  const imgH=imgB?`<img src="${imgB.url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">`:`<div class="cph" style="width:56px;height:56px;font-size:10px">No asset</div>`;
+  const imgW=findImg(worst.entity);
+  const imgWH=imgW?`<img src="${imgW.url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">`:`<div class="cph" style="width:56px;height:56px;font-size:10px">No asset</div>`;
+  const insB=getBestInsight(best);
+  const insW=getWorstInsight(worst);
+  const bestProof=creativeProofParts(best);
+  const worstProof=creativeProofParts(worst);
+  const mode=(getSelectedChannels()[0]||best.channel||'Creative').replace('Moloco / Programmatic','In-app Display');
+  const rLabel=rateMetricLabel(), cLabel=costMetricLabel(), formula=primaryFormula();
+  const evidenceBest=`CTR ${(best.ctr_pct||0).toFixed(1)}% · ${rLabel} ${(best.cvr_pct||0).toFixed(1)}% · ${cLabel} ${fmtCpa(best.cpa_vnd||0)} · QS ${(best.quality_score||0).toFixed(1)}. ${formula}.`;
+  const insightBest=`Asset này không thắng ở khả năng kéo click, mà thắng ở chất lượng user sau click. Điểm nên giữ là ${bestProof.offer?`offer ${bestProof.offer}K`: 'offer'}${bestProof.useCase?` + use case ${bestProof.useCase}`:''}. Không tăng budget trực tiếp cho đúng asset hiện tại; hãy dùng nó làm base message và tạo bản mới có offer/CTA dễ đọc hơn${bestProof.size?` trong size ${bestProof.size}`:''}.`;
+  const whyText=`${mode}: trigger có khả năng đến từ offer/use case cụ thể, không phải chỉ từ attention. ${rLabel} cao nghĩa là user đã click có xu hướng hoàn tất primary metric tốt; CTR thấp nghĩa là visual/CTA/placement chưa kéo đủ click volume. Placement = nơi ad được hiển thị trong app.`;
+  const proofBest=`${bestProof.label}. Metric đọc kèm: low CTR nhưng high ${rLabel} -> message đang lọc đúng intent sau click.`;
+  const proofWorst=`${worstProof.label}. Metric đọc kèm: CTR/${rLabel} lệch với best -> attention chưa đồng nghĩa qualified intent.`;
+  const nextTest=`Giữ ${bestProof.offer?`offer ${bestProof.offer}K`: 'offer chính'}${bestProof.useCase?` + ${bestProof.useCase}`:''}; test 3 variant: (1) offer lớn hơn, (2) CTA button rõ hơn, (3) visual hierarchy sạch hơn${bestProof.size?` cho ${bestProof.size}`:''}.`;
+
+  const winning=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--ok)">🏆 Winning</div>
+    <div class="citem" style="flex-direction:column;padding:12px">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        ${imgH}
+        <div style="flex:1;min-width:0">
+          <span class="db db-${dbClass(best.decision)}">${best.decision}</span>
+          <div style="font-size:13px;font-weight:700;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sn(best.entity))}</div>
+          <div style="font-size:12px;color:var(--g400);margin-top:1px">${esc(best.channel||'')} ${esc(best.os||'')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0"><div style="font-size:20px;font-weight:700;color:var(--ok)">${(best.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1" title="Quality Score = CTR×15% + CVR×45% + CPA×40%">Quality Score</div></div>
+      </div>
+      ${metricBadges(best)}
+      <div style="font-size:13px;margin-top:8px;line-height:1.55"><strong>Data Evidence:</strong><br>${esc(evidenceBest)}</div>
+      <div style="font-size:13px;margin-top:6px;line-height:1.55"><strong>Insight:</strong><br>${esc(insightBest)}</div>
+      <div class="insight-block green" style="margin-top:8px"><strong>Replicate:</strong><br>${esc(insB.replicate)}</div>
+    </div>
+  </div>`;
+
+  const why=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--pri)">⚡ Why It Wins</div>
+    <div class="citem" style="flex-direction:column;padding:12px">
+      <div style="font-size:13px;line-height:1.6"><strong>Trigger:</strong> ${esc(whyText)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div style="padding:8px 10px;border-radius:6px;background:var(--ok-l);font-size:12px;line-height:1.45;color:#166534"><strong>Proof - best</strong><br>${esc(proofBest)}</div>
+        <div style="padding:8px 10px;border-radius:6px;background:var(--err-l);font-size:12px;line-height:1.45;color:#991b1b"><strong>Proof - worst</strong><br>${esc(proofWorst)}</div>
+      </div>
+      <div class="insight-block blue" style="margin-top:8px"><strong>Next Test:</strong><br>${esc(nextTest)}</div>
+    </div>
+  </div>`;
+
+  const worstCard=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--err)">🚧 Worst Signal</div>
+    <div class="citem" style="flex-direction:column;padding:12px">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        ${imgWH}
+        <div style="flex:1;min-width:0">
+          <span class="db db-${dbClass(worst.decision)}">${worst.decision}</span>
+          <div style="font-size:13px;font-weight:700;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sn(worst.entity))}</div>
+          <div style="font-size:12px;color:var(--g400);margin-top:1px">${esc(worst.channel||'')} ${esc(worst.os||'')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0"><div style="font-size:20px;font-weight:700;color:var(--err)">${(worst.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1" title="Quality Score = CTR×15% + CVR×45% + CPA×40%">Quality Score</div></div>
+      </div>
+      ${metricBadges(worst)}
+      <div style="font-size:13px;margin-top:8px;line-height:1.55"><strong class="weakness-line">Weakness:</strong><br>${esc(normalizeInsightCopy(insW.weakness))}</div>
+      <div style="font-size:13px;margin-top:6px;line-height:1.55"><strong>Insight:</strong><br>${esc(normalizeInsightCopy(insW.insight))}</div>
+      <div class="insight-block red" style="margin-top:8px"><strong>Avoid:</strong><br>${esc(insW.replicate)}</div>
+    </div>
+  </div>`;
+
+  return `<div class="story-stack" style="grid-column:1/-1;display:flex;flex-direction:column;gap:12px">${winning}${why}${worstCard}</div>`;
+}
+
+function renderNotificationComparison(best,worst){
+  const insB=getNotificationBestInsight(best);
+  const insW=getNotificationWeakInsight(worst);
+  const ma=lastResult.metric_availability||{};
+  const proofBest=`Title/body/promotion: ${best.title||best.entity||'best message'}${best.description?` | ${best.description}`:''}${best.promotion?` | promo ${best.promotion}`:''}${best.send_time?` | send time ${best.send_time}`:''}. Metric đọc kèm: Click ${formatRate(best.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(best.cvr_pct)}`:''}.`;
+  const proofWorst=`Title/body/promotion: ${worst.title||worst.entity||'weak message'}${worst.description?` | ${worst.description}`:''}${worst.promotion?` | promo ${worst.promotion}`:''}${worst.send_time?` | send time ${worst.send_time}`:''}. Metric đọc kèm: Click ${formatRate(worst.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(worst.cvr_pct)}`:''}.`;
+
+  const winning=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--ok)">🏆 Winning</div>
+    <div class="citem" style="flex-direction:column;padding:12px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="flex:1;min-width:0"><span class="db db-${dbClass(best.decision)}">${best.decision}</span>
+          <div style="font-size:13px;font-weight:700;margin-top:5px">${esc(best.title||sn(best.entity))}</div>
+          <div style="font-size:12px;color:var(--g600);margin-top:3px;line-height:1.45">${esc(best.description||'No description mapped')}</div>
+        </div>
+        <div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--ok)">${(best.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1">Quality Score</div></div>
+      </div>
+      ${notificationBadges(best)}
+      <div class="insight-block green" style="margin-top:8px"><strong>Replicate:</strong><br>${esc(insB.replicate)}</div>
+    </div>
+  </div>`;
+
+  const why=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--pri)">⚡ Why It Wins</div>
+    <div class="citem" style="flex-direction:column;padding:12px">
+      <div style="font-size:13px;line-height:1.6"><strong>Trigger:</strong> ${esc(insB.trigger)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div style="padding:8px 10px;border-radius:6px;background:var(--ok-l);font-size:12px;line-height:1.45;color:#166534"><strong>Proof - best</strong><br>${esc(proofBest)}</div>
+        <div style="padding:8px 10px;border-radius:6px;background:var(--err-l);font-size:12px;line-height:1.45;color:#991b1b"><strong>Proof - worst</strong><br>${esc(proofWorst)}</div>
+      </div>
+      <div class="insight-block blue" style="margin-top:8px"><strong>Next Test:</strong><br>${esc(insB.nextTest)}</div>
+    </div>
+  </div>`;
+
+  const worstCard=`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-size:13px;font-weight:700;color:var(--err)">🚧 Worst Signal</div>
+    <div class="citem" style="flex-direction:column;padding:12px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="flex:1;min-width:0"><span class="db db-${dbClass(worst.decision)}">${worst.decision}</span>
+          <div style="font-size:13px;font-weight:700;margin-top:5px">${esc(worst.title||sn(worst.entity))}</div>
+          <div style="font-size:12px;color:var(--g600);margin-top:3px;line-height:1.45">${esc(worst.description||'No description mapped')}</div>
+        </div>
+        <div style="text-align:right"><div style="font-size:20px;font-weight:700;color:var(--err)">${(worst.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1">Quality Score</div></div>
+      </div>
+      ${notificationBadges(worst)}
+      <div style="font-size:13px;margin-top:8px;line-height:1.55"><strong class="weakness-line">Weakness:</strong><br>${esc(insW.weakness)}</div>
+      <div class="insight-block red" style="margin-top:8px"><strong>Avoid:</strong><br>${esc(insW.replicate)}</div>
+    </div>
+  </div>`;
+
+  return `<div class="story-stack" style="grid-column:1/-1;display:flex;flex-direction:column;gap:12px">${winning}${why}${worstCard}</div>`;
+}
+
+function getBestInsight(m){
+  const product=$('product').value||'App';
+  if(isNoti()){
+    const ma=lastResult.metric_availability||{};
+    const parts=[`%Sent ${formatRate(m.sent_rate_pct)}`];
+    if(ma.open!==false)parts.push(`Open Rate ${formatRateWithCount(m.open_rate_pct,m.open,'opens tracked')}`);
+    parts.push(`Click Rate ${formatRate(m.ctr_pct)}`);
+    if(ma.payment!==false)parts.push(`Click-to-payment ${formatRate(m.cvr_pct)}`);
+    return {
+      evidence:`${parts.join(' | ')}. Title: ${m.title||'N/A'}. Promotion: ${m.promotion||'N/A'}.`,
+      strength:ma.payment!==false?'Title/body/promotion đang tạo tín hiệu tốt trong funnel owned media.':'Có click signal trong dữ liệu hiện có; chưa kết luận downstream quality vì thiếu Payment/Login.',
+      weakness:ma.payment!==false?'Neu Click-to-payment chua cao, message body hoac deep link van can toi uu.':'Payment data not available — chưa thể đánh giá downstream payment quality.',
+      insight:ma.payment!==false?'User bi trigger boi benefit ro rang, nhung de di den payment can body va post-click flow giai thich dung hanh dong tiep theo.':'Hiện tại chỉ có thể đánh giá theo Click Rate. File chưa có Payment/Login downstream nên chưa thể kết luận notification có tạo conversion quality hay không. Cần bổ sung Payment/Login event trước khi audit deep link.',
+      replicate:'Giu cau truc title: benefit + use case + urgency neu co.',
+      nextTest:ma.payment!==false?`Tao 3 variant:\n- Title ro benefit/payment action\n- Description lam ro dieu kien promotion\n- Ban cung khung gio top vs khung gio doi chung`:'Bổ sung Open và Payment/Login event, sau đó phân tích lại funnel Sent → Open → Click → Login/Payment.'
+    };
+  }
+  if(isNoti()) return {
+    evidence:`%Sent ${formatRate(m.sent_rate_pct)} | Open Rate ${formatRateWithCount(m.open_rate_pct,m.open,'opens tracked')} | Click Rate ${formatRate(m.ctr_pct)} | Click-to-payment ${formatRate(m.cvr_pct)}. Title: ${m.title||'N/A'}. Promotion: ${m.promotion||'N/A'}.`,
+    strength:'Title/body/promotion đang tạo tín hiệu tốt trong funnel owned media.',
+    weakness:'Nếu Click-to-payment chưa cao, message body hoặc deep link vẫn cần tối ưu.',
+    insight:'User bị trigger bởi benefit rõ ràng, nhưng để đi đến payment cần body và post-click flow giải thích đúng hành động tiếp theo.',
+    replicate:'Giữ cấu trúc title: benefit + use case + urgency nếu có.',
+    nextTest:`Tạo 3 variant:\n- Title rõ benefit/payment action\n- Description làm rõ điều kiện promotion\n- Bắn cùng khung giờ top vs khung giờ đối chứng`
+  };
+  if(m.pattern==='low_ctr_high_cvr') return {
+    evidence:`CTR ${m.ctr_pct.toFixed(1)}% thấp, nhưng ${rateMetricLabel()} ${m.cvr_pct.toFixed(1)}% và ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)} cho thấy selected Primary Metric(s) tốt hơn phần lớn peer set.`,
+    strength:'Offer/promotion có khả năng lọc đúng user có nhu cầu. Đây là tín hiệu tốt về conversion quality, không phải attention.',
+    weakness:'CTR thấp cho thấy first frame/visual packaging chưa đủ mạnh để dừng scroll hoặc tạo click volume.',
+    insight:`Creative này không nên scale nguyên bản. Nó nên được xem là base concept để nhân bản phần offer/message, sau đó làm lại hook, CTA và visual hierarchy.`,
+    replicate:'Giữ offer và framing "ưu đãi khi thanh toán/mua sắm".',
+    nextTest:`Tạo 3 variant:\n- CTA rõ benefit: "Tải ${product} nhận 15K"\n- Use case cụ thể: "Thanh toán TikTok Shop bằng ${product}"\n- Visual có người/bối cảnh checkout thật`
+  };
+  return {
+    evidence:`CTR ${m.ctr_pct.toFixed(1)}% | ${rateMetricLabel()} ${m.cvr_pct.toFixed(1)}% | ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)} — best signal trong peer set hiện tại.`,
+    strength:'Creative cân bằng tốt giữa attention, conversion quality và cost.',
+    weakness:'Vẫn cần test variant trước khi giả định có thể scale rộng. Sample có thể chưa đủ lớn.',
+    insight:'Đây là đại diện tốt nhất hiện tại, phù hợp làm base concept cho production tiếp theo.',
+    replicate:'Dùng làm base concept; giữ nguyên core message/offer.',
+    nextTest:'Tạo 2-3 variant chỉ thay đổi từng yếu tố: CTA, color, hook — để tìm performance ceiling.'
+  };
+}
+function getWorstInsight(m){
+  const product=$('product').value||'App';
+  if(isNoti()){
+    const ma=lastResult.metric_availability||{};
+    const parts=[`%Sent ${formatRate(m.sent_rate_pct)}`];
+    if(ma.open!==false)parts.push(`Open Rate ${formatRateWithCount(m.open_rate_pct,m.open,'opens tracked')}`);
+    parts.push(`Click Rate ${formatRate(m.ctr_pct)}`);
+    if(ma.payment!==false)parts.push(`Click-to-payment ${formatRate(m.cvr_pct)}`);
+    return {
+      evidence:`${parts.join(' | ')}. Title: ${m.title||'N/A'}. Promotion: ${m.promotion||'N/A'}.`,
+      strength:ma.open!==false?'Co the van co learning ve timing hoac delivery neu %Sent/Open Rate thap.':'Co the van hoc duoc theo %Sent va Click Rate; chua the danh gia title bang Open Rate.',
+      weakness:'Title/body qua generic, khong noi ro user nhan gi hoac can lam gi sau khi mo.',
+      insight:ma.payment!==false?'Notification khong tao du ly do de user mo hoac click. Voi push, title phai thang trong mot dong dau tien.':'Hiện tại chỉ có thể đánh giá theo Click Rate. File chưa có Payment/Login downstream nên chưa thể kết luận notification có tạo conversion quality hay không.',
+      replicate:'Tranh title chung chung neu khong noi ro uu dai la gi.',
+      nextTest:ma.payment!==false?`Sửa theo 2 hướng:\n- Rõ hơn về user nhận gì và phải làm gì\n- Test lại ở khung giờ hiệu quả hơn trước khi kết luận copy yếu`:'Bổ sung Payment/Login event trước khi audit deep link hoặc kết luận conversion quality.'
+    };
+  }
+  if(isNoti()) return {
+    evidence:`%Sent ${formatRate(m.sent_rate_pct)} | Open Rate ${formatRateWithCount(m.open_rate_pct,m.open,'opens tracked')} | Click Rate ${formatRate(m.ctr_pct)} | Click-to-payment ${formatRate(m.cvr_pct)}. Title: ${m.title||'N/A'}. Promotion: ${m.promotion||'N/A'}.`,
+    strength:'Có thể vẫn có learning về timing hoặc delivery nếu %Sent/Open Rate thấp.',
+    weakness:'Title/body quá generic, không nói rõ user nhận gì hoặc cần làm gì sau khi mở.',
+    insight:'Notification không tạo đủ lý do để user mở hoặc click. Với push, title phải thắng trong một dòng đầu tiên.',
+    replicate:'Tránh title chung chung như “Bạn có ưu đãi mới” nếu không nói rõ ưu đãi là gì.',
+    nextTest:`Sửa theo 2 hướng:\n- Rõ hơn về user nhận gì và phải làm gì\n- Test lại ở khung giờ hiệu quả hơn trước khi kết luận copy yếu`
+  };
+  if(m.pattern==='high_ctr_low_cvr') return {
+    evidence:`CTR ${m.ctr_pct.toFixed(1)}% cao hơn nhiều creative khác, nhưng ${rateMetricLabel()} chỉ ${m.cvr_pct.toFixed(1)}% và ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)}.`,
+    strength:'Creative có khả năng tạo attention/click.',
+    weakness:'Click không chuyển thành action, cho thấy traffic có thể là curiosity click hoặc promise không align với post-click experience.',
+    insight:`Không nên copy hook/visual chỉ vì CTR cao. Với UA, creative cần vừa kéo attention vừa qualify đúng intent install/login/payment.`,
+    replicate:'Tránh message quá rộng hoặc CTA chỉ tạo tò mò.',
+    nextTest:`Làm promise cụ thể hơn: user nhận gì, điều kiện gì, hành động gì trong ${product}.`
+  };
+  return {
+    evidence:`CTR ${m.ctr_pct.toFixed(1)}% | ${rateMetricLabel()} ${m.cvr_pct.toFixed(1)}% | ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)} — worst signal trong peer set.`,
+    strength:'Có thể có element đáng giữ lại nếu phân tích kỹ hơn bằng visual analysis.',
+    weakness:'Offer, hook, clarity hoặc audience fit chưa đủ mạnh.',
+    insight:'Creative này không nên làm mẫu cho production tiếp theo.',
+    replicate:'Tránh execution style này. Rebuild từ best signal thay vì sửa nhỏ.',
+    nextTest:'Bắt đầu lại từ winning pattern, thay đổi toàn bộ visual approach.'
+  };
+}
+
+// ═══ L3: Creative Key Takeaways ═══
+function renderL3(){
+  const tks=lastResult.creative_takeaways||[];
+  if(!tks.length){$('L3-body').innerHTML='<div style="color:var(--g400);font-size:12px">Chưa đủ data để tạo takeaway. Upload images hoặc thêm data.</div>';return}
+  $('L3-body').innerHTML=`<div class="takeaway-grid">`+tks.map(t=>`<div class="lcard">
+    <div class="ldim">${esc(t.element)}</div>
+    <div style="font-size:12px;margin-top:6px"><strong>Signal:</strong> ${esc(normalizeInsightCopy(t.signal))}</div>
+    <div class="levid"><strong>Insight:</strong> ${esc(normalizeInsightCopy(t.insight))}</div>
+    <div class="lact"><strong>Action:</strong>\n${esc(normalizeInsightCopy(t.action))}</div>
+    <details><summary>View more</summary>
+      ${t.strength?`<div style="font-size:12px;margin-top:8px"><strong class="strength-line">Strength:</strong> ${esc(normalizeInsightCopy(t.strength))}</div>`:''}
+      ${t.weakness?`<div style="font-size:12px;margin-top:4px"><strong class="weakness-line">Weakness:</strong> ${esc(normalizeInsightCopy(t.weakness))}</div>`:''}
+    </details>
+  </div>`).join('')+`</div>`;
+}
+
+let nhMetric='ctr_pct';
+function nhMetricKey(){return nhMetric}
+function nhMetricLabel(){return{ctr_pct:'Click Rate',open_rate_pct:'Open Rate',cvr_pct:'Payment Rate',sent:'Sent volume'}[nhMetric]||nhMetric}
+function nhCellValue(x){return nhMetric==='sent'?x.sent||0:x[nhMetric]||0}
+function nhCellDisplay(x){return nhMetric==='sent'?(x.sent||0).toLocaleString():formatRate(x[nhMetric])}
+
+function renderNH(){
+  const hp=lastResult.hourly_performance;
+  if(!isNoti()||!hp){$('NH').classList.add('hidden');return}
+  const byHour=hp.by_hour||hp||[];
+  const byDayHour=hp.by_day_hour||[];
+  const hasWeekday=hp.has_weekday&&byDayHour.length>0;
+  if(!byHour.length){$('NH').classList.add('hidden');return}
+  $('NH').classList.remove('hidden');
+
+  const ma=lastResult.metric_availability||{};
+  if(!ma.open&&nhMetric==='open_rate_pct')nhMetric='ctr_pct';
+  if(!ma.payment&&nhMetric==='cvr_pct')nhMetric='ctr_pct';
+
+  const sorted=[...byHour].sort((a,b)=>(nhCellValue(b))-(nhCellValue(a)));
+  const top3=sorted.slice(0,3).filter(x=>nhCellValue(x)>0);
+
+  let b='';
+
+  // ── Top hour chips ──
+  if(top3.length){
+    b+='<div style="margin-bottom:8px"><span style="font-size:12px;font-weight:600;color:var(--g600)">Top time slots:</span></div>';
+    b+='<div class="top-hours">';
+    top3.forEach((x,i)=>{
+      b+=`<div class="top-hour-chip"><span class="thc-rank">${i+1}</span>${String(x.hour).padStart(2,'0')}:00 · ${nhMetricLabel()} ${nhCellDisplay(x)}</div>`;
+    });
+    b+='</div>';
+    if(top3.length>=2){
+      const lo=Math.min(...top3.map(x=>x.hour));
+      const hi=Math.max(...top3.map(x=>x.hour));
+      b+=`<div style="font-size:12px;color:var(--g600);margin:6px 0 12px;line-height:1.5">${esc(`Khung ${String(lo).padStart(2,'0')}:00–${String(hi).padStart(2,'0')}:00 đang có ${nhMetricLabel()} tốt nhất. Nên test cùng title/body trong các khung này để isolate timing impact.`)}</div>`;
+    }
+  }
+
+  // ── Metric selector ──
+  b+='<div class="hm-controls"><span style="font-size:11px;color:var(--g600);font-weight:600">Metric:</span>';
+  const hmMetrics=[{k:'ctr_pct',l:'Click Rate',need:'click'},{k:'open_rate_pct',l:'Open Rate',need:'open'},{k:'cvr_pct',l:'Conversion Rate',need:'payment'},{k:'sent',l:'Sent volume',need:'sent'}];
+  hmMetrics.filter(m=>ma[m.need]!==false).forEach(m=>{
+    b+=`<span class="hm-btn ${nhMetric===m.k?'active':''}" onclick="nhMetric='${m.k}';renderNH()">${m.l}</span>`;
+  });
+  b+='</div>';
+
+  // ── Heatmap ──
+  const allVals=byHour.map(x=>nhCellValue(x));
+  const hMin=Math.min(...allVals);
+  const hMax=Math.max(...allVals);
+  const hRange=hMax-hMin||1;
+
+  function cellColor(val){
+    const t=Math.max(0,Math.min(1,(val-hMin)/hRange));
+    if(nhMetric==='cvr_pct'){
+      const r=Math.round(220-180*t),g=Math.round(240-80*t),b2=Math.round(220-170*t);
+      return `rgb(${r},${g},${b2})`;
+    }
+    const r=Math.round(224-190*t),g=Math.round(242-120*t),b2=Math.round(254-93*t);
+    return `rgb(${r},${g},${b2})`;
+  }
+
+  function tipContent(label,x){
+    let tip=label;
+    tip+=`<br>Sent: ${x?(x.sent||0).toLocaleString():'0'}`;
+    if(ma.open!==false)tip+=`<br>Open Rate: ${x?formatRate(x.open_rate_pct):'0.000%'}`;
+    tip+=`<br>Click Rate: ${x?formatRate(x.ctr_pct):'0.000%'}`;
+    if(ma.payment!==false)tip+=`<br>Conversion: ${x?formatRate(x.cvr_pct):'0.000%'}`;
+    tip+=`<br><span style="font-size:9px;opacity:.7">Metric base: ${lastResult.click_rate_formula||'Click / Success'}</span>`;
+    return tip;
+  }
+
+  if(hasWeekday){
+    const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const hours=[...new Set(byDayHour.map(x=>x.hour))].sort((a,b)=>a-b);
+    const dh={};byDayHour.forEach(x=>{dh[`${x.dow}_${x.hour}`]=x});
+    const dhVals=byDayHour.map(x=>nhCellValue(x));
+    const dhMin=Math.min(...dhVals,0);const dhMax=Math.max(...dhVals,0.01);const dhRange=dhMax-dhMin||1;
+    function dhColor(val){const t=Math.max(0,Math.min(1,(val-dhMin)/dhRange));const r=Math.round(224-190*t),g=Math.round(242-120*t),b2=Math.round(254-93*t);return `rgb(${r},${g},${b2})`}
+
+    b+=`<div class="heatmap-wrap"><div class="hm-grid" style="grid-template-columns:48px repeat(${hours.length},1fr)">`;
+    b+='<div class="hm-label"></div>';
+    hours.forEach(h=>{b+=`<div class="hm-label">${String(h).padStart(2,'0')}</div>`});
+    days.forEach((day,di)=>{
+      b+=`<div class="hm-label">${day}</div>`;
+      hours.forEach(h=>{
+        const cell=dh[`${di}_${h}`];
+        const val=cell?nhCellValue(cell):0;
+        b+=`<div class="hm-cell" style="background:${dhColor(val)}"><div class="hm-tip">${tipContent(day+' '+String(h).padStart(2,'0')+':00',cell)}</div></div>`;
+      });
+    });
+    b+='</div>';
+  } else {
+    const allHours=byHour.map(x=>x.hour).sort((a,b)=>a-b);
+    const hourMap={};byHour.forEach(x=>{hourMap[x.hour]=x});
+    b+=`<div class="heatmap-wrap"><div style="font-size:12px;font-weight:600;color:var(--g600);margin-bottom:6px">Hourly Performance — ${nhMetricLabel()}</div>`;
+    b+=`<div class="hm-grid" style="grid-template-columns:repeat(${allHours.length},1fr)">`;
+    allHours.forEach(h=>{b+=`<div class="hm-label">${String(h).padStart(2,'0')}</div>`});
+    allHours.forEach(h=>{
+      const x=hourMap[h];
+      const val=x?nhCellValue(x):0;
+      const isTop=top3.some(t=>t.hour===h);
+      const border=isTop?';box-shadow:inset 0 0 0 2px var(--pri)':'';
+      b+=`<div class="hm-cell" style="background:${cellColor(val)}${border}"><div class="hm-tip">${tipContent(String(h).padStart(2,'0')+':00',x)}</div></div>`;
+    });
+    b+='</div>';
+  }
+  // Legend
+  b+='<div class="hm-legend"><span>Low</span><div class="hm-legend-bar"></div><span>High</span></div></div>';
+
+  // ── Raw hourly table — collapsed by default ──
+  const tableRows=[...byHour].sort((a,b)=>a.hour-b.hour);
+  b+='<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--pri);font-weight:600">View raw hourly table</summary>';
+  b+=`<div class="table-scroll" style="margin-top:6px"><table class="rtable"><tr><th>Hour</th><th>Sent</th>${ma.open!==false?'<th>Open Rate</th>':''}<th>Click Rate</th>${ma.payment!==false?'<th>Conversion Rate</th>':''}</tr>`;
+  tableRows.forEach(x=>{
+    const isTop=top3.some(t=>t.hour===x.hour);
+    b+=`<tr${isTop?' style="background:var(--pri-l)"':''}><td><strong>${String(x.hour).padStart(2,'0')}:00</strong></td><td>${(x.sent||0).toLocaleString()}</td>${ma.open!==false?`<td>${formatRate(x.open_rate_pct)}</td>`:''}<td>${formatRate(x.ctr_pct)}</td>${ma.payment!==false?`<td>${formatRate(x.cvr_pct)}</td>`:''}</tr>`;
+  });
+  b+='</table></div></details>';
+
+  $('NH-body').innerHTML=b;
+}
+
+function renderFunnel(){
+  const f=lastResult.funnel_breakdown||null;
+  if(!isNoti()||!f){$('NF').classList.add('hidden');return}
+  $('NF').classList.remove('hidden');
+  const ma=lastResult.metric_availability||{};
+  let ft=`<div class="alert alert-info">Funnel notification không dùng CPA. Trọng tâm hiện tại là delivered → ${ma.open!==false?'open → ':''}click${ma.payment!==false?' → conversion':''}. ${ma.payment===false?'Chưa có conversion event trong file. Bổ sung metric phù hợp (NPU, MPU, Login, Payment...) nếu muốn đánh giá downstream.':''}</div>
+    <div class="table-scroll"><table class="rtable">
+      <tr><th>Metric</th><th>Value</th><th>Rate</th><th>Diagnosis</th></tr>
+      <tr><td>Sent</td><td>${(f.sent||0).toLocaleString()}</td><td>-</td><td>Total notification volume.</td></tr>
+      <tr><td>Delivered / Success</td><td>${(f.delivered||0).toLocaleString()}</td><td>${formatRate(f.sent_rate_pct)}</td><td>Nếu thấp, kiểm tra segment/schedule/delivery.</td></tr>`;
+  if(ma.open!==false)ft+=`<tr><td>Open</td><td>${(f.open||0).toLocaleString()}</td><td>${formatRateWithCount(f.open_rate_pct,f.open,'opens tracked')}</td><td>${f.open===0&&f.clicks>0?'⚠️ Open = 0 nhưng Click > 0 — kiểm tra Open tracking.':'Nếu thấp, title/send time/segment yếu.'}</td></tr>`;
+  ft+=`<tr><td>Click</td><td>${(f.clicks||0).toLocaleString()}</td><td>${formatRate(f.click_rate_pct)}</td><td>Nếu ${ma.open!==false?'open tốt nhưng ':''}click thấp, body/CTA chưa đủ động lực.</td></tr>`;
+  if(ma.payment!==false)ft+=`<tr><td>Payment / Login</td><td>${(f.payment||0).toLocaleString()}</td><td>${formatRate(f.click_to_payment_rate_pct)}</td><td>${(f.click_to_payment_rate_pct||0)===0?'Payment Rate = 0.000% dù column tồn tại.':'Nếu click tốt nhưng payment thấp, audit deep link/post-click flow.'}</td></tr>`;
+  ft+=`</table></div>`;
+  $('NF-body').innerHTML=ft;
+}
+
+// ═══ L6: Action Plan ═══
+function renderL6(){
+  const rankPriority=p=>{p=(p||'').toLowerCase();return p.includes('cao nh')?0:p.includes('cao')?1:p.includes('trung')?2:9};
+  const recs=[...(lastResult.recommendations||[])].sort((a,b)=>rankPriority(a.priority)-rankPriority(b.priority));
+  if(!recs.length){$('L6-body').innerHTML='';return}
+  const selected=getSelectedChannels();
+  const programmaticMode=selected.includes('DSP')?'DSP / Programmatic':selected.includes('Other Network')?'Other Network':'';
+  const normalizeActionText=t=>{
+    let s=String(t||'');
+    if(programmaticMode&&programmaticMode!=='Moloco'){
+      s=s.replace(/Moloco\s*\/\s*Programmatic/g,programmaticMode);
+      s=s.replace(/\bMoloco\b/g,programmaticMode);
+      s=s.replace(/cho\s+Moloco\s*\/\s*Programmatic/g,'cho '+programmaticMode);
+    }
+    return s;
+  };
+  $('L6-body').innerHTML=`<div class="action-grid">`+recs.map(r=>{
+    const p=(r.priority||'').toLowerCase();
+    const isTop=p.includes('cao nh');
+    const isHigh=p.includes('cao')&&!isTop;
+    const badgeCls=isTop?'top':isHigh?'high':'';
+    const borderColor=isTop?'var(--err)':isHigh?'var(--warn)':'var(--g300)';
+    return `<div class="action-card" style="border-left:3px solid ${borderColor}">
+      <span class="priority-badge ${badgeCls}">${esc(r.priority||'Medium')}</span>
+      <div class="a-title">${esc(normalizeActionText(r.learning))}</div>
+      <div class="a-meta"><strong>Action:</strong> ${esc(normalizeActionText(r.action))}</div>
+      <div class="a-output"><strong>Output:</strong> ${esc(normalizeActionText(r.output))}</div>
+    </div>`;
+  }).join('')+`</div>`;
+}
+
+// ═══ L8: Detail Cards ═══
+
+function renderL8(){
+  // Notification Details: slider, 10 per page
+  if(isNoti()){
+    const sorted=[...lastMs].sort((a,b)=>b.quality_score-a.quality_score);
+    const PAGE=10;
+    const total=sorted.length;
+    const pages=Math.max(1,Math.ceil(total/PAGE));
+    if(!renderL8._notiPage||renderL8._notiPage>=pages)renderL8._notiPage=0;
+
+    window.renderNotiPage=function(pg){
+      renderL8._notiPage=pg;
+      const chunk=sorted.slice(pg*PAGE,(pg+1)*PAGE);
+      let html='';
+      // Slider nav
+      if(pages>1){
+        html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">';
+        html+=`<span style="font-size:12px;color:var(--g600)">Showing ${pg*PAGE+1}–${Math.min((pg+1)*PAGE,total)} of ${total}</span>`;
+        html+='<div style="display:flex;gap:4px;margin-left:auto">';
+        for(let i=0;i<pages;i++){
+          const active=i===pg;
+          html+=`<button onclick="renderNotiPage(${i})" style="min-width:28px;height:28px;border-radius:6px;border:1.5px solid ${active?'var(--pri)':'var(--g200)'};background:${active?'var(--pri)':'#fff'};color:${active?'#fff':'var(--g600)'};font-size:12px;font-weight:${active?'700':'400'};cursor:pointer">${i+1}</button>`;
+        }
+        html+='</div></div>';
+      }
+      chunk.forEach(m=>{
+        const color=dc(m.decision);
+        let diag='';
+        if(m.pattern==='strong_notification') diag='Title/timing tạo tín hiệu tốt.';
+        else if(m.pattern==='low_sent_rate') diag='%Sent yếu — kiểm tra segment/schedule.';
+        else if(m.pattern==='no_conversions') diag='Không có conversion — verify tracking.';
+        else diag='Mixed signals.';
+        html+=`<div class="dcard" style="border-left:3px solid ${color}">
+          <div class="dcard-hdr" onclick="this.parentElement.classList.toggle('open')">
+            <div class="di">
+              <div style="display:flex;align-items:center;gap:6px"><span class="db db-${dbClass(m.decision)}">${m.decision}</span><span style="font-size:11px;color:var(--g400)">${esc(m.send_time||'')}</span></div>
+              <div class="dn">${esc(m.title||m.entity)}</div>
+              <div class="dd">${esc(m.description||'')} — ${diag}</div>
+            </div>
+            <div class="dqs"><div class="v" style="color:${color}">${(m.quality_score||0).toFixed(1)}</div><div class="l">QS</div></div>
+            <span class="arr">▾</span>
+          </div>
+          <div class="dcard-body">
+            <div class="kv-grid" style="margin-top:8px">
+              <div><strong>Send time</strong>${esc(m.send_time||'N/A')}</div>
+              <div><strong>Promotion</strong>${esc(m.promotion||'—')}</div>
+              <div><strong>%Sent</strong>${formatRate(m.sent_rate_pct)}</div>
+              <div><strong>Click Rate</strong>${formatRate(m.ctr_pct)}</div>
+            </div>
+          </div>
+        </div>`;
+      });
+      $('L8').innerHTML=html;
+    }
+    renderNotiPage(renderL8._notiPage||0);
+    return;
+  }
+  const sorted=[...lastMs].sort((a,b)=>b.quality_score-a.quality_score);
+  const maxCTR=Math.max(...lastMs.map(m=>m.ctr_pct||0),.1),maxCVR=Math.max(...lastMs.map(m=>m.cvr_pct||0),.1);
+  const cpas=lastMs.filter(m=>m.cpa_vnd>0).map(m=>m.cpa_vnd);const medCPA=cpas.length?cpas.sort((a,b)=>a-b)[Math.floor(cpas.length/2)]:0;
+  const best=sorted[0];
+  const PAGE=10;
+  const total=sorted.length;
+  const pages=Math.max(1,Math.ceil(total/PAGE));
+  if(!renderL8._creativePage||renderL8._creativePage>=pages)renderL8._creativePage=0;
+
+  window.renderCreativePage=function(pg){
+  renderL8._creativePage=pg;
+  const chunk=sorted.slice(pg*PAGE,(pg+1)*PAGE);
+  let html='';
+  if(pages>1){
+    html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">';
+    html+=`<span style="font-size:12px;color:var(--g600)">Showing ${pg*PAGE+1}-${Math.min((pg+1)*PAGE,total)} of ${total}</span>`;
+    html+='<div style="display:flex;gap:4px;margin-left:auto">';
+    for(let i=0;i<pages;i++){
+      const active=i===pg;
+      html+=`<button onclick="renderCreativePage(${i})" style="min-width:28px;height:28px;border-radius:6px;border:1.5px solid ${active?'var(--pri)':'var(--g200)'};background:${active?'var(--pri)':'#fff'};color:${active?'#fff':'var(--g600)'};font-size:12px;font-weight:${active?'700':'400'};cursor:pointer">${i+1}</button>`;
+    }
+    html+='</div></div>';
+  }
+  html+=chunk.map(m=>{
+    const color=dc(m.decision);const img=findImg(m.entity);
+    const imgH=isNoti()?'':(img?`<img src="${img.url}">`:'<div class="dph">No asset<br><span>Check file</span></div>');
+    let diag='';
+    if(m.pattern==='low_ctr_high_cvr') diag='Conversion sau click tốt nhưng click volume yếu.';
+    else if(m.pattern==='high_ctr_low_cvr') diag='Kéo được click nhưng không convert.';
+    else if(m.pattern==='strong_all') diag='Balanced signal — có thể scale có kiểm soát.';
+    else if(m.pattern==='strong_notification') diag='Title/timing/promotion đang tạo tín hiệu notification tốt.';
+    else if(m.pattern==='low_sent_rate') diag='Delivery hoặc %Sent yếu — cần kiểm tra segment/schedule.';
+    else if(m.pattern==='no_conversions') diag='Không có conversion — cần verify tracking.';
+    else if(m.pattern==='weak_all') diag=`CTR và ${rateMetricLabel()} đều dưới peer median.`;
+    else diag='Mixed signals — cần thêm data.';
+
+    const learning=getDetailLearning(m);
+    let detail=`<div style="margin-top:10px"><strong style="font-size:12px">Dạng tín hiệu:</strong> <span style="font-size:12px">${esc(patternLabel(m.pattern))}</span></div>`;
+    detail+=`<div class="lcard" style="margin-top:8px"><div class="ldim">Insight</div><div class="lfind">${esc(learning.learn)}</div><div class="levid"><strong>Nguyên nhân chính:</strong> ${esc(learning.why)}</div><div class="levid"><strong>Giả thuyết creative:</strong> ${esc(learning.hypothesis)}</div><div class="lact"><strong>Next test:</strong> ${esc(learning.next)}</div></div>`;
+
+    const metricAvailability=lastResult.metric_availability||{};
+    const showPaymentBar=!isNoti()||metricAvailability.payment!==false;
+    const ctrP=((m.ctr_pct||0)/maxCTR*100).toFixed(0),cvrP=((m.cvr_pct||0)/maxCVR*100).toFixed(0),qsP=((m.quality_score||0)/10*100).toFixed(0);
+    detail+=`<div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:120px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g600)"><span>CTR</span><span>${(m.ctr_pct||0).toFixed(1)}%</span></div><div style="background:var(--g100);border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;width:${ctrP}%;background:#3b82f6;border-radius:3px"></div></div></div>
+      ${showPaymentBar?`<div style="flex:1;min-width:120px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g600)"><span>${isNoti()?'Payment Rate':rateMetricLabel()}</span><span>${(m.cvr_pct||0).toFixed(1)}%</span></div><div style="background:var(--g100);border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;width:${cvrP}%;background:#8b5cf6;border-radius:3px"></div></div></div>`:''}
+      <div style="flex:1;min-width:120px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g600)"><span>QS</span><span>${(m.quality_score||0).toFixed(1)}/10</span></div><div style="background:var(--g100);border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;width:${qsP}%;background:${color};border-radius:3px"></div></div></div>
+    </div>`;
+
+    let checks='';
+    if(isNoti()){
+      const ma=lastResult.metric_availability||{};
+      checks+=m.sent_rate_pct>=95?chk(true,`%Sent ${formatRate(m.sent_rate_pct)} — Delivery ổn`):chk(false,`%Sent ${formatRate(m.sent_rate_pct)} — Kiểm tra segment, schedule hoặc lỗi gửi`);
+      if(ma.open===false)checks+=chk(null,'Open data not available — chưa thể đánh giá title performance bằng Open Rate.');
+      else checks+=m.open_rate_pct>0?chk(true,`Open Rate ${formatRate(m.open_rate_pct)} — Có tín hiệu title/send time`):(m.ctr_pct>0?chk(null,`Open Rate ${formatRate(m.open_rate_pct)} — Open tracking check needed (có Click nhưng Open = 0)`):chk(null,`Open Rate ${formatRateWithCount(m.open_rate_pct,m.open,'opens tracked')} — title/open signal yếu hoặc chưa có open`));
+      checks+=m.ctr_pct>=1?chk(true,`Click Rate ${formatRate(m.ctr_pct)} — Body/promotion có trigger click`):chk(null,`Click Rate ${formatRate(m.ctr_pct)} — Cần test title/description/promotion trigger`);
+      if(ma.payment===false)checks+=chk(null,'Payment data not available — chưa thể đánh giá downstream payment quality.');
+      else checks+=m.cvr_pct>0?chk(true,`Click-to-payment ${formatRate(m.cvr_pct)} — Có tín hiệu downstream action`):chk(null,`Payment Rate ${formatRate(m.cvr_pct)} — Payment/Login column tồn tại nhưng chưa có conversion`);
+      if(m.warning) checks+=chk(null,m.warning);
+    }else{
+    if((m.ctr_pct||0)>=2) checks+=chk(true,`CTR ${m.ctr_pct.toFixed(1)}% — Attention performance tốt`);
+    else if((m.ctr_pct||0)>=1) checks+=chk(null,`CTR ${m.ctr_pct.toFixed(1)}% — Trung bình. Test hook, CTA contrast, first frame mạnh hơn`);
+    else checks+=chk(false,`CTR ${m.ctr_pct.toFixed(1)}% — Thấp. Creative chưa dừng scroll; cần visual/value prop rõ hơn`);
+    if(m.warning) checks+=chk(false,`No conversion — đã spend ${fmtCpa(m.cost_vnd||0)}. Cần kiểm tra tracking`);
+    else{
+      if((m.cvr_pct||0)>=5) checks+=chk(true,`${rateMetricLabel()} ${m.cvr_pct.toFixed(1)}% — selected action signal tốt`);
+      else if((m.cvr_pct||0)>=1) checks+=chk(null,`${rateMetricLabel()} ${m.cvr_pct.toFixed(1)}% — Trung bình. Kiểm tra offer/landing consistency`);
+      else checks+=chk(false,`${rateMetricLabel()} ${m.cvr_pct.toFixed(1)}% — Action signal yếu. Có thể mismatch giữa ad và post-click`);
+      if(m.vs_plan_pct!=null){
+        if(m.vs_plan_pct<=0) checks+=chk(true,`CPA ${fmtCpa(m.cpa_vnd||0)} — ${Math.abs(m.vs_plan_pct).toFixed(0)}% below benchmark`);
+        else if(m.vs_plan_pct<=30) checks+=chk(null,`CPA ${fmtCpa(m.cpa_vnd||0)} — ${m.vs_plan_pct.toFixed(0)}% above benchmark`);
+        else checks+=chk(false,`CPA ${fmtCpa(m.cpa_vnd||0)} — ${m.vs_plan_pct.toFixed(0)}% over benchmark`);
+      }else if(medCPA>0&&m.cpa_vnd>0){
+        const rel=((m.cpa_vnd-medCPA)/medCPA*100).toFixed(0);
+        checks+=m.cpa_vnd<=medCPA?chk(true,`CPA ${fmtCpa(m.cpa_vnd)} — ${Math.abs(rel)}% below median`):chk(false,`CPA ${fmtCpa(m.cpa_vnd)} — ${rel}% above median`);
+      }
+    }
+    }
+    detail+=`<div style="margin-top:8px">${checks}</div>`;
+    if(!isNoti())detail+=`<div style="margin-top:8px;font-size:11px;color:var(--g400);font-style:italic">Visual analysis chưa được kích hoạt. Các nhận định về CTA/màu/font/text density chỉ dựa trên naming/performance; cần image vision để xác nhận.</div>`;
+    if(best&&m!==best&&(m.decision==='PAUSE'||m.decision==='INVESTIGATE FUNNEL'))
+      detail+=`<div style="margin-top:8px;padding:6px 8px;border-radius:6px;background:var(--pri-l);color:#1e40af;font-size:11px"><strong>vs Best (${sn(best.entity)}):</strong> CTR ${best.ctr_pct.toFixed(1)}% vs ${m.ctr_pct.toFixed(1)}%, ${rateMetricLabel()} ${best.cvr_pct.toFixed(1)}% vs ${m.cvr_pct.toFixed(1)}%</div>`;
+
+    return `<div class="dcard" style="border-left:3px solid ${color}">
+      <div class="dcard-hdr" onclick="this.parentElement.classList.toggle('open')">
+        ${imgH}<div class="di">
+          <div style="display:flex;align-items:center;gap:6px"><span class="db db-${dbClass(m.decision)}">${m.decision}</span>${m.channel?`<span style="font-size:11px;color:var(--g400)">${esc(m.channel)} ${esc(m.os||'')}</span>`:''}</div>
+          <div class="dn">${esc(m.entity)}</div>
+          <div class="dd">${metricLine(m)} — ${diag}</div>${entityText(m)}
+        </div><div class="dqs"><div class="v" style="color:${color}">${m.quality_score.toFixed(1)}</div><div class="l">QS</div></div><span class="arr">▾</span>
+      </div><div class="dcard-body">${detail}</div></div>`;
+  }).join('');
+  $('L8').innerHTML=html;
+  $('toggle-all-btn').textContent='Expand All';
+  };
+  renderCreativePage(renderL8._creativePage||0);
+}
+
+function toggleAll(){const cards=document.querySelectorAll('.dcard');const allOpen=[...cards].every(c=>c.classList.contains('open'));cards.forEach(c=>{if(allOpen)c.classList.remove('open');else c.classList.add('open')});$('toggle-all-btn').textContent=allOpen?'Expand All':'Collapse All'}
+
+function getDetailLearning(m){
+  if(isNoti()){
+    const ma=lastResult.metric_availability||{};
+    const hasPayment=ma.payment!==false;
+    return {
+      learn: hasPayment ? 'Notification có tín hiệu downstream đo được từ dữ liệu upload.' : 'Notification hiện chủ yếu đọc được theo delivery/click signal; downstream data còn hạn chế.',
+      why: 'Dựa trên các field performance có trong file upload.',
+      hypothesis: 'So sánh title/body/timing với Click Rate và action signal để tìm driver chính.',
+      next: 'Giữ pattern mạnh nhất và test từng biến một: copy, timing hoặc offer.'
+    };
+  }
+  return {
+    learn: 'Dạng tín hiệu được xác định từ dữ liệu performance đã upload.',
+    why: `CTR, ${rateMetricLabel()} và ${costMetricLabel()} cho biết bottleneck nhiều khả năng nằm ở attention hay post-click action.`,
+    hypothesis: 'Iteration tiếp theo nên giữ lại tín hiệu mạnh nhất và chỉ isolate một điểm yếu mỗi lần test.',
+    next: 'Dùng creative tốt nhất làm baseline, mỗi variant chỉ thay một yếu tố để biết driver thật.'
+  };
+}
+function patternLabel(p){
+  const map={
+    low_ctr_high_cvr:`CTR thấp / ${rateMetricLabel()} tốt`,
+    high_ctr_low_cvr:`CTR tốt / ${rateMetricLabel()} thấp`,
+    strong_all:'Tín hiệu cân bằng',
+    weak_all:'CTR và action signal đều yếu',
+    no_conversions:'Không có primary action',
+    mixed_signals:'Tín hiệu lẫn lộn',
+    strong_notification:'Notification có tín hiệu tốt',
+    low_sent_rate:'Delivery yếu'
+  };
+  return map[p]||p||'Chưa phân loại';
+}
+</script>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const apiFetch = (path, opts) => fetch(path, opts);
+  let rescueDataKey = '';
+  let rescueImageKey = '';
+  window.findImg = window.findImg || function(entity){
+    const imgs = window.uploadedImages || [];
+    const norm = s => String(s||'').toLowerCase().replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]+/g,'');
+    const target = norm(entity);
+    if (!target) return null;
+    return imgs.find(img => {
+      const n = norm(img.name);
+      return n && (target.includes(n) || n.includes(target));
+    }) || null;
+  };
+  window.dc = window.dc || function(decision){
+    const d=String(decision||'').toUpperCase();
+    if(d.includes('SCALE'))return 'var(--ok)';
+    if(d.includes('MAINTAIN'))return 'var(--blue)';
+    if(d.includes('ITERATE'))return 'var(--purple)';
+    if(d.includes('INVESTIGATE')||d.includes('CHECK'))return 'var(--warn)';
+    if(d.includes('PAUSE'))return 'var(--err)';
+    return 'var(--g600)';
+  };
+  window.dbClass = window.dbClass || function(decision){return String(decision||'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'')||'MAINTAIN'};
+  window.chk = window.chk || function(state,text){
+    const icon=state===true?'✓':state===false?'✕':'•';
+    const color=state===true?'var(--ok)':state===false?'var(--err)':'var(--warn)';
+    return `<div class="check-row"><span style="color:${color}">${icon}</span><span>${esc(text)}</span></div>`;
+  };
+  window.sn = window.sn || function(s){const v=String(s||'');return v.length>52?v.slice(0,49)+'...':v};
+
+  function pickBreakdownColumn(columns){
+    const priority = ['campaign_name','ad_name','ad','creative','creative_name','title','campaign','asset','banner'];
+    const lowerMap = new Map(columns.map(c => [String(c).toLowerCase().trim(), c]));
+    for (const key of priority) if (lowerMap.has(key)) return lowerMap.get(key);
+    return columns.find(c => /campaign|ad|creative|asset|banner|title/i.test(c)) || columns[0] || '';
+  }
+
+  async function readJsonSafe(res){
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; }
+    catch { throw new Error(text || `HTTP ${res.status}`); }
+    if (!res.ok) throw new Error((data && (data.detail || data.error)) || text || `HTTP ${res.status}`);
+    return data;
+  }
+
+  async function rescueParseNaming(csvData, column){
+    const area = $('np-area'), sampleEl = $('np-sample'), fieldsEl = $('np-fields');
+    if (!area || !sampleEl || !fieldsEl || !column) return;
+    const samples = (csvData.sample_rows || []).map(r => r[column]).filter(Boolean).slice(0,5);
+    if (!samples.length) return;
+    area.classList.remove('hidden');
+    sampleEl.textContent = samples[0];
+    let fields;
+    try {
+      const r = await apiFetch('/api/parse-naming', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({samples})
+      });
+      fields = (await readJsonSafe(r)).fields || [];
+    } catch {
+      fields = String(samples[0]).split(/[_\-]/).map((value,index)=>({index,value,meaning:`Field ${index+1}`}));
+    }
+    const meanings = ['Team','Date','Campaign ID','Optimization Event','Use Case / Creative','OS','Creative Date','Channel / Media','Creative Type','Format','Content ID','Version / Concept ID','Version','Size','Promotion','Budget Tier','Scheme','Segment','Script ID','Other'];
+    fieldsEl.innerHTML = fields.map((f,i)=>`<div class="nf"><div class="fl">Field ${i+1}</div><div class="vl">Value</div><div class="fv">${esc(f.value)}</div><div class="vl">Dropdown meaning</div><select style="width:100%;padding:3px 5px;font-size:11px;border:1px solid var(--g200);border-radius:4px;margin-top:3px">${meanings.map(m=>`<option value="${esc(m)}" ${m===f.meaning?'selected':''}>${esc(m)}</option>`).join('')}</select></div>`).join('');
+  }
+
+  async function rescueUploadData(file){
+    if (!file) return;
+    const key = [file.name,file.size,file.lastModified].join('|');
+    if (key === rescueDataKey && !$('csv-pv')?.classList.contains('hidden')) return;
+    rescueDataKey = key;
+    const dz = $('csv-dz');
+    const inner = dz?.querySelector('.dz-inner');
+    if (inner) inner.innerHTML = `<div class="icon">⏳</div><div><strong>Đang tải file...</strong></div><div class="hint">${esc(file.name)}</div>`;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const r = await apiFetch('/api/upload-csv', {method:'POST', body:fd});
+      const csvData = await readJsonSafe(r);
+      window.csvFile = file;
+      window.csvData = csvData;
+      $('csv-fn').textContent = file.name;
+      $('csv-pv').classList.remove('hidden');
+      dz?.classList.add('hidden');
+      $('csv-st').textContent = `${csvData.row_count} rows x ${csvData.columns.length} cols`;
+      let h = '<table><tr>' + csvData.columns.map(c=>`<th>${esc(c)}</th>`).join('') + '</tr>';
+      (csvData.sample_rows || []).forEach(row => { h += '<tr>' + csvData.columns.map(c=>`<td>${esc(row[c] ?? '')}</td>`).join('') + '</tr>'; });
+      $('csv-tw').innerHTML = h + '</table>';
+      const pm = $('pm'); pm.innerHTML = '<option value="">-- Select --</option>' + (csvData.numeric_columns || []).filter(c=>isPrimaryMetricCandidate(c)).map(c=>`<option value="${esc(c)}" ${/login|payment|install|npu|mpu/i.test(String(c))?'selected':''}>${esc(c)}</option>`).join('');
+      const bd = $('bd'); bd.innerHTML = '<option value="">-- Select --</option>' + csvData.columns.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      const autoBd = pickBreakdownColumn(csvData.columns);
+      if (autoBd) bd.value = autoBd;
+      const sm = $('sm-area');
+      sm.innerHTML = csvData.columns.map(c=>`<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:12px;background:#fff"><input type="checkbox" value="${esc(c)}" ${/impression|click|cost/i.test(c)?'checked':''}><span>${esc(c)}</span></label>`).join('');
+      const mode = csvData.detected_mode;
+      if (mode && $('mode-det')) {
+        $('mode-det').innerHTML = `<span class="mode-tag">${esc(mode.mode || 'creative_performance')}</span>`;
+        $('mode-det').classList.remove('hidden');
+      }
+      if ($('s2n')) $('s2n').style.background = 'var(--ok)';
+      if (typeof window.validateWeights === 'function') $('go-btn').disabled = !window.validateWeights();
+      else $('go-btn').disabled = false;
+      if (autoBd) await rescueParseNaming(csvData, autoBd);
+    } catch(e) {
+      console.error('[upload:data:rescue] fail', e);
+      if (inner) inner.innerHTML = '<div class="icon">📄</div><div><strong>Drop CSV file here</strong> or click to browse</div><div class="hint">.csv, .xlsx or .xls</div>';
+      alert('Upload failed: ' + e.message);
+    }
+  }
+
+  function rescueUploadImages(files){
+    const list = Array.from(files || []).filter(f => /image\/(png|jpeg|webp)/.test(f.type));
+    const key = list.map(f=>[f.name,f.size,f.lastModified].join('|')).join('||');
+    if (!key || key === rescueImageKey) return;
+    rescueImageKey = key;
+    window.uploadedImages = window.uploadedImages || [];
+    list.forEach(f => window.uploadedImages.push({file:f,url:URL.createObjectURL(f),name:f.name}));
+    const pv = $('img-pv');
+    pv.innerHTML = window.uploadedImages.map((img,i)=>`<div class="ic"><img src="${img.url}"><div class="il">${esc(img.name)}</div><button class="rb" type="button" onclick="this.closest('.ic').remove()">×</button></div>`).join('');
+  }
+
+  function bindUploadRescue(){
+    const dataInput = $('csv-in');
+    const imageInput = $('img-in');
+    if (dataInput && !dataInput.dataset.rescueBound) {
+      dataInput.dataset.rescueBound = '1';
+      dataInput.addEventListener('change', () => rescueUploadData(dataInput.files && dataInput.files[0]));
+    }
+    if (imageInput && !imageInput.dataset.rescueBound) {
+      imageInput.dataset.rescueBound = '1';
+      imageInput.addEventListener('change', () => rescueUploadImages(imageInput.files));
+    }
+    setInterval(() => {
+      if (dataInput?.files?.length && $('csv-pv')?.classList.contains('hidden')) rescueUploadData(dataInput.files[0]);
+      if (imageInput?.files?.length && !$('img-pv')?.children.length) rescueUploadImages(imageInput.files);
+    }, 500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindUploadRescue);
+  else bindUploadRescue();
+})();
+</script>
+<script>
+window.findImg=function(entity){
+  var imgs=window.uploadedImages||[];
+  function norm(s){return String(s||'').toLowerCase().replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]+/g,'')}
+  var target=norm(entity);
+  if(!target)return null;
+  for(var i=0;i<imgs.length;i++){
+    var n=norm(imgs[i].name);
+    if(n&&(target.indexOf(n)>=0||n.indexOf(target)>=0))return imgs[i];
+  }
+  return null;
+};
+window.dc=function(decision){
+  var d=String(decision||'').toUpperCase();
+  if(d.indexOf('SCALE')>=0)return 'var(--ok)';
+  if(d.indexOf('MAINTAIN')>=0)return 'var(--blue)';
+  if(d.indexOf('ITERATE')>=0)return 'var(--purple)';
+  if(d.indexOf('INVESTIGATE')>=0||d.indexOf('CHECK')>=0)return 'var(--warn)';
+  if(d.indexOf('PAUSE')>=0)return 'var(--err)';
+  return 'var(--g600)';
+};
+window.dbClass=function(decision){return String(decision||'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'')||'MAINTAIN'};
+window.chk=function(state,text){
+  var icon=state===true?'✓':state===false?'✕':'•';
+  var color=state===true?'var(--ok)':state===false?'var(--err)':'var(--warn)';
+  var safe=String(text||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]});
+  return '<div class="check-row"><span style="color:'+color+'">'+icon+'</span><span>'+safe+'</span></div>';
+};
+window.sn=function(s){var v=String(s||'');return v.length>52?v.slice(0,49)+'...':v};
+var findImg=window.findImg,dc=window.dc,dbClass=window.dbClass,chk=window.chk,sn=window.sn;
+</script>
+</body>
+</html>

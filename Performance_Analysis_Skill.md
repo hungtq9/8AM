@@ -1,17 +1,24 @@
-# OM PFM — UA Performance Analysis Skill
+# Performance Analysis Skill — Mode-based (UA / Retargeting / Other)
+
+> **Mục đích:** tài liệu **learning / reference** cho agent phân tích performance creative/campaign. KHÔNG phải bộ filter cứng áp cho mọi data. Người dùng **upload CSV (field đã được gen sẵn)** → agent **đọc field có sẵn**, KHÔNG cần parse/filter sâu theo từng campaign `ZPI_`. Tùy **Mode** (UA / Retargeting / Other) mà áp khung phân tích phù hợp (xem Lens 9).
 
 **Owner:** Hung (Senior User Growth Execution, OM team, Zalopay)
-**Scope:** OM Performance Marketing (PFM) — `ZPI_` campaign series only
-**Data source:** AppsFlyer LTV view + OM Ads Performance plan sheet
-**Last updated:** 2026-05-27
+**Scope:** Phân tích performance **đa mode** (UA / Retargeting / Other) từ data CSV upload
+**Data source:** CSV upload (AppsFlyer / Ads export — field tự gen), hoặc API khi có
+**Last updated:** 2026-06-17
 
 ---
 
 ## 1. ROLE DEFINITION
 
-Operate như **Senior Mobile Growth & Performance Marketing Analyst** chuyên về Fintech UA cho Zalopay. Output báo cáo dạng **executive narrative review** cho Head of Growth — không phải BI dashboard export.
+Operate như **Senior Mobile Growth & Performance Marketing Analyst** cho Zalopay. Output báo cáo dạng **executive narrative review** — không phải BI dashboard export.
 
-**Mục tiêu:** Convert user unaware Zalopay → ready-to-pay user, qua tracking và optimization của OM PFM channel mix.
+**Khung phân tích thích ứng theo Mode** (xác định trước khi phân tích — xem Lens 9):
+- **UA / Acquisition** — convert user chưa biết Zalopay → ready-to-pay (mục tiêu mặc định của OM PFM).
+- **Retargeting** — reactivate / repeat với user đã biết / đã cài / lapsed.
+- **Other** — mục tiêu khác (vd lead gen, hoặc action do user tự định nghĩa). Ai cũng chọn được mode này khi data không thuộc UA/Retargeting.
+
+Vì data là **CSV upload với field đã gen sẵn**, phần filter naming `ZPI_`/`AEO-` ở Mục 2 chỉ là **reference cho UA mode**, KHÔNG bắt buộc áp cứng cho mọi data.
 
 ---
 
@@ -194,6 +201,64 @@ Khi TikTok CP Login cao hoặc tăng, **tách TTO vs Freelance** trước khi bl
 
 ---
 
+### Lens 8: Action-Aware Conversion Diagnosis (phân tích theo loại Primary Metric / action)
+
+**Nguyên tắc:** cùng 1 creative nhưng tùy **loại action** (Primary Metric người dùng chọn) mà yếu tố impact khác hẳn. Phải tách **2 trục chẩn đoán**, không gộp:
+
+- **CTR (attention / click)** ← do **channel skill** xử lý: hook, visual, size, placement, offer visibility.
+- **Action Rate (sau click)** = `Primary Metric / Click` ← do **action skill** xử lý: cái gì thực sự drive đúng action đó.
+
+**Quy tắc gán bottleneck (bắt buộc, tránh đổ lỗi sai chỗ):**
+
+| Tín hiệu | Bottleneck nằm ở | Skill dẫn |
+|---|---|---|
+| Low CTR + High Action Rate | Attention / creative (hook, first-frame) | Channel skill |
+| High CTR + Low Action Rate | Post-click (tùy action) | Action skill |
+| Cả hai thấp | Audience / offer fit | Audience + offer |
+
+> KHÔNG kết luận "CTA/hook yếu" khi Action Rate thấp mà CTR ổn — lúc đó vấn đề là post-click (store/landing/offer/audience), không phải creative.
+
+**Bộ yếu tố impact theo từng action:**
+
+| Action | Chuỗi post-click | Yếu tố impact (ưu tiên) | Bottleneck hay nằm ở | Phụ thuộc audience |
+|---|---|---|---|---|
+| **Install** | ad → store → install | ad↔store match → store creative (icon/screenshot/rating) → offer credibility → friction (size/permission) | Store listing + ad-store match (KHÔNG phải ad creative) | Trung bình |
+| **Login (returning)** | ad → open → login | lý do quay lại → deep-link đúng chỗ → friction (OTP/pass) → personalization | Onboarding/friction + relevance | Cao |
+| **Payment / NPU** | ad → app → activate → pay | sức mạnh offer → trust → use-case rõ → friction bước pay → urgency | Offer + trust + payment flow | Cao |
+| **Lead gen / Qualified lead** | ad → landing/form → lead | audience-offer fit (targeting) → landing clarity → form friction → value exchange → tiêu chí qualified | Targeting/audience + landing/form (ít phụ thuộc creative) | Rất cao |
+| **Generic** (event thô chưa định nghĩa) | ad → ? → action | post-click consistency → friction → offer relevance | Gắn nhãn "post-click → `<raw event>`" + nhắc user định nghĩa | Chưa rõ → hỏi |
+
+**Quy tắc audience:** action càng "sâu" (Payment, Qualified lead) → trọng số **audience + landing/offer** càng cao, càng KHÔNG đổ lỗi creative đơn thuần. Với **Qualified lead**, chữ *qualified* được định nghĩa bởi **segment + tiêu chí** → bắt buộc kéo target audience vào; nếu thiếu segment → báo rõ "chưa đánh giá được audience-fit, hãy nhập segment".
+
+**Quy tắc với metric chưa định nghĩa** (vd `Unique users ... appsflyer zp_applestore_payment`): KHÔNG tự suy diễn là Payment. Mặc định coi là **Action Rate = Primary Metric / Click**, phân tích generic (post-click → action), và **nhắc user định nghĩa event** trong Analysis Brief để áp đúng bộ yếu tố ở bảng trên.
+
+**Mapping với hệ thống:** `primary_metric_kind` (install/login/payment/lead/qualified_lead/generic) chọn bộ yếu tố tương ứng; output merge **channel skill (attention) + action skill (conversion)** vào Trigger / Key Insight / Takeaways.
+
+---
+
+### Lens 9: Campaign Objective Mode (UA vs Retargeting vs Lead Gen)
+
+**Xác định MODE trước khi phân tích** — vì audience, metric primary, và driver khác nhau hoàn toàn. KHÔNG áp logic UA cho retargeting/lead.
+
+| | **UA / Acquisition** | **Retargeting (`RET-`)** | **Other** (vd: Lead gen, mục tiêu tự định nghĩa) |
+|---|---|---|---|
+| **Audience** | User mới, chưa biết Zalopay | User đã biết/đã cài/lapsed/churned | Prospect theo target (vd merchant, sản phẩm cụ thể) |
+| **Naming/Filter** | `ZPI_` + `AEO-` | prefix `RET-` (bị loại khỏi báo cáo UA) | campaign lead-gen riêng (web/form) |
+| **Primary metric** | CP Login / NPU (new payment) | Reactivation / repeat-payment / **recall-churn** (`zp_recall_churn_30/60/further`), return rate | Lead rate / **CPL** / qualified-lead rate / lead→customer |
+| **Driver chính** | awareness hook → offer → install/login → first payment | **lý do quay lại** + offer relevance + recency×frequency + deep-link feature + personalization (KHÔNG cần discovery/hook) | **targeting (audience-offer fit)** + landing/form + value exchange + tiêu chí qualified |
+| **Bottleneck focus** | attention → offer → funnel | **relevance + offer + friction re-transact** (không đổ creative attention) | **targeting + landing/form** (ít phụ thuộc creative) |
+| **CP benchmark** | CP Login theo plan | thường **rẻ hơn UA** → benchmark riêng, đừng so với CP Login UA | CPL theo plan lead, + lead quality |
+| **Caveat đặc thù** | CPM inflation, cannibalization, blend non-OM | **incrementality** (ăn organic returns), frequency cap/fatigue, exclude đã-convert, recall window = recency segment | lead quality ≠ volume, định nghĩa "qualified", đo downstream chứ không chỉ form-fill, web funnel ≠ app |
+
+**Quy tắc:**
+- **Retargeting:** message = *reminder / feature-update / personalized offer*, không phải "stop-scroll hook". Social proof ít quan trọng (đã trust brand). Đọc theo **recency** qua các cột churn_30 < churn_60 < further. Luôn nhắc đo **incrementality** trước khi khen reactivation rate.
+- **Other:** mode catch-all cho mọi mục tiêu ngoài UA/Retargeting (lead gen, hoặc action user tự định nghĩa). Ai cũng chọn được. Chẩn đoán theo Lens 8 action tương ứng (`lead/qualified_lead/generic`). Vd lead gen → nhấn **audience-fit + landing/form** đầu tiên; nếu thiếu segment/tiêu chí qualified → báo "chưa đánh giá được, cần định nghĩa ICP + qualified criteria". Nếu action chưa rõ → dùng generic + nhắc user định nghĩa.
+- **UA:** giữ nguyên filter `ZPI_` + `AEO-`; KHÔNG trộn `RET-` vào số UA (Pitfall 1).
+
+**Mode detection gợi ý:** prefix campaign (`RET-` → retargeting), event/metric chọn (`recall_churn` → retargeting; `lead`/form → lead gen), hoặc user khai trong Analysis Brief. Mơ hồ → hỏi user mode trước khi kết luận.
+
+---
+
 ## 5. APPSFLYER API CAVEATS
 
 ### Dimension Conflicts
@@ -285,6 +350,28 @@ Plan = **`02_DAILY_INPUT/OM_Planning.xlsx`** (single source of truth). KHÔNG ha
 ```
 
 **Test cho mỗi paragraph:** "Why does this matter for business decisions?" — không answer được → cắt.
+
+### Key Learning Summary — synthesis từ Takeaways + phân vai 3 card (KHÔNG trùng)
+
+**Quan hệ với Creative Key Takeaways:** 3 card tóm tắt KHÔNG phải chỉ phân tích 1 creative thắng — chúng là **synthesis / roll-up từ TOÀN BỘ Creative Key Takeaways bên dưới** (Offer, CTA, Main Message, Audience Fit, Action Skill, Size…). Mỗi khẳng định trong 3 card phải **truy ngược được** về ≥1 element takeaway bên dưới (không tự chế insight ngoài evidence).
+
+**Mỗi card chỉ trả lời ĐÚNG 1 câu hỏi:**
+
+| Card | Câu hỏi | Tổng hợp từ | KHÔNG được |
+|---|---|---|---|
+| **KEY LEARNING** | *Creative thắng vì insight gì?* | driver mạnh nhất (Offer / Message / Audience / Action-skill) + winning signal | nêu root-cause / bottleneck |
+| **BOTTLENECK** | *Vướng ở đâu?* | blocker lớn nhất gom từ các element (CTA spread, CTR thấp, size/placement, visual hierarchy…) | lặp learning / liệt kê action |
+| **NEXT STEP** | *Làm gì tiếp?* | gom + ưu tiên action từ các element takeaway (dedup) + target số | giải thích lại insight/bottleneck |
+
+**Ví dụ chuẩn (mode Install):**
+- **Key Learning:** "DSP creative offer 15K + TikTok Shop tạo selected action tốt: Install Rate 15.2%, trong khi CTR chỉ 0.21%. Nghĩa là offer/message lọc đúng user sau click, nhưng chưa đủ mạnh để kéo volume đầu phễu." *(chỉ insight; rút từ takeaway Offer + Action-skill, không nói size/placement)*
+- **Bottleneck:** "Vướng ở attention/visibility: banner size/placement + visual hierarchy chưa làm offer đủ nổi bật trong placement app. Đây là vấn đề packaging, không phải concept." *(chỗ DUY NHẤT nói root-cause; rút từ takeaway CTA spread + Size/Placement)*
+- **Next Step:** "Giữ offer/message core. Test 3 visual variant: offer lớn hơn, CTA rõ hơn, hierarchy sạch hơn. Target CTR 0.21% → 0.5%." *(gom action từ các takeaway, ưu tiên)*
+
+**Quy tắc chống trùng + synthesis:**
+- 3 card = lớp **executive synthesis** TRÊN các element takeaway; mỗi card 1 câu hỏi, không lấn sân.
+- Root-cause chỉ ở **Bottleneck**; action chi tiết chỉ ở **Next Step**; winning insight chỉ ở **Key Learning**.
+- Action-skill note (theo Primary Metric) trong Key Learning = **learning angle MỚI** (vd "Install phụ thuộc store listing + ad-store match → Install Rate cao = store/offer đã khớp"), KHÔNG restate bottleneck.
 
 ### HTML Report — Deep-dive UX Rules
 

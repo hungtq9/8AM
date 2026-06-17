@@ -1,78 +1,104 @@
 # Creative Performance Insight Agent
 
-**Claw-a-thon 2026 — Data Analysis Track**
+Claw-a-thon 2026 - Data Analysis Track
 
-AI agent phân tích creative performance cho UA campaigns — tự động từ raw campaign CSV đến insight report.
+AI agent phan tich creative performance tu CSV campaign/export data, tao dashboard insight de Growth/UA team biet creative nao dang thang, vuong o dau, va nen test gi tiep theo.
 
-## Problem
+## What It Does
 
-UA/Growth teams mất 30–60 phút mỗi ngày đọc campaign data thủ công để tìm creative nào nên scale, maintain, hay pause. Quy trình này không nhất quán và không accessible cho non-OM members.
+- Upload CSV/XLSX performance data.
+- Map raw fields and select Primary Metric(s).
+- Analyze by mode: UA, Retargeting, Other; channel groups include SRN/Paid Social, Programmatic/In-app Banner, and Owned/Lifecycle.
+- Calculate Quality Score and action-aware metrics.
+- Generate Key Learning, Bottleneck, Next Step, Winning -> Why It Wins -> Worst Signal, Creative Detail, and Action Plan.
+- Optional Qwen/GreenNode MaaS narrative via environment variables.
 
-## Solution
+## Project Structure
 
-Agent nhận CSV campaign data → tự động:
-1. Parse campaign name theo naming convention (ZPI_ + AEO-)
-2. Tách creative source: TTO vs Freelance (TikTok), Scheme clusters (Moloco)
-3. Tính Quality Score = f(CTR, login rate, CP Login vs plan)
-4. Gọi Qwen model để sinh narrative insight
-5. Trả về report với SCALE / MAINTAIN / PAUSE decision
-
-## Quick Start
-
-```bash
-# 1. Clone và setup
-git clone <repo>
-cd clawathon-creative-agent
-cp .env.example .env
-# Điền LLM_ENDPOINT và LLM_API_KEY vào .env
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Run local
-uvicorn app:app --reload --port 8000
-
-# 4. Test với sample data
-curl -X POST http://localhost:8000/analyze \
-  -F "file=@demo/sample_input.csv"
+```text
+Build Agent/
+|-- app.py
+|-- analysis/
+|-- static/
+|   |-- index.html
+|   |-- Thumbnail.png
+|   `-- Thumbnail-hero.png
+|-- demo/
+|   `-- sample_input.csv
+|-- Dockerfile
+|-- requirements.txt
+|-- .env.example
+`-- README.md
 ```
 
-Mở http://localhost:8000 để xem UI và docs.
+## Local Run
 
-## CSV Input Format
-
-| Column | Required | Description |
-|---|---|---|
-| `campaign_name` | ✅ | Full campaign name (ZPI_ format) |
-| `ad_name` | ❌ | Ad/creative name (Moloco only) |
-| `date` | ❌ | Date (YYYY-MM-DD) |
-| `cost_usd` | ✅ | Spend in USD |
-| `impressions` | ✅ | Total impressions |
-| `clicks` | ✅ | Total clicks |
-| `installs` | ✅ | Total installs |
-| `logins` | ✅ | New logins (login_success) |
-| `npu` | ✅ | New payment users |
-
-Download sample: `GET /sample-csv`
-
-## Architecture
-
+```powershell
+cd "C:\Users\LAP15681\OneDrive - VNG Corporation\Build Agent"
+python -m pip install -r requirements.txt
+python -m uvicorn app:app --host 127.0.0.1 --port 8000
 ```
-CSV Upload
-    ↓
-Campaign Parser (ZPI_ + AEO- filter, entity extraction)
-    ↓
-Metrics Calculator (Quality Score, CP Login, CTR, login rate)
-    ↓
-Qwen LLM (narrative insight via GreenNode MaaS)
-    ↓
-Insight Report (Markdown + JSON)
+
+Open:
+
+```text
+http://127.0.0.1:8000/?v=2026-06-16.27
 ```
+
+Health check:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+## API
+
+### GET /health
+
+Returns build and LLM configuration status.
+
+### GET /
+
+Serves the dashboard UI from `static/index.html`.
+
+### POST /api/upload-csv
+
+Uploads CSV/XLSX for preview and field mapping.
+
+### POST /api/analyze
+
+Runs the analysis. The dashboard sends multipart form data including the performance file, selected fields, Primary Metric(s), channel/mode, scoring config, and Analysis Brief.
+
+### GET /sample-csv
+
+Downloads demo sample data.
 
 ## Deployment
 
-Deployed on GreenNode AgentBase. See `.env.example` for configuration.
+The Docker container listens on port `8080`.
 
-## Data
+AgentBase runtime must be configured with:
 
-Uses **synthetic mock data only**. No production data, no PII, no internal campaign data.
+```text
+Port: 8080
+```
+
+Dockerfile command:
+
+```text
+uvicorn app:app --host 0.0.0.0 --port 8080
+```
+
+Recommended AgentBase environment variables:
+
+```text
+LLM_ENDPOINT=https://maas.greennode.ai/v1
+LLM_API_KEY=<set in AgentBase secret/env, do not commit>
+LLM_MODEL=Qwen-3-27B
+```
+
+Do not commit `.env`, `.greennode.json`, `.agentbase*`, real customer data, logs, cache, or files under `Test data/`.
+
+## Data Notice
+
+`demo/sample_input.csv` is safe demo data. Real campaign exports and internal testing files must stay local and must not be pushed to a public repository.
