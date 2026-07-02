@@ -21,7 +21,7 @@ try:  # load .env locally; on AgentBase env is injected at runtime (load_dotenv 
 except Exception:
     pass
 
-APP_BUILD = "2026-07-02.40"  # bump mỗi lần sửa để xác nhận đang chạy bản mới (xem /health hoặc badge UI)
+APP_BUILD = "2026-07-02.41"  # bump mỗi lần sửa để xác nhận đang chạy bản mới (xem /health hoặc badge UI)
 app = FastAPI(title="Creative Performance Insight Agent", version="4.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -1154,11 +1154,27 @@ async def analyze_v2(
         cost_raw = float(row.get(cost_col, 0) or 0) if cost_col else 0
         actions = float(row.get(primary_metric, 0) or 0) if primary_metric else 0
         cost_display = cost_raw * FX_RATE if convert_to_vnd else cost_raw
-        cpa_display = cost_display / actions if actions > 0 else 0
         impressions = float(row.get(imp_col, 0) or 0) if imp_col else 0
         clicks = float(row.get(click_col, 0) or 0) if click_col else 0
         ctr = (clicks / impressions * 100) if impressions > 0 else 0
-        cvr = (actions / clicks * 100) if clicks > 0 else 0
+        cvr_raw = (actions / clicks * 100) if clicks > 0 else 0
+        # Mục 21 sanity guard: Primary Metric may be mis-mapped to a large/aggregate column
+        # (reach/total/impressions) → Action Rate explodes (e.g. 3,077,486%) and CPA collapses
+        # to ~1đ. A post-click action can't exceed clicks (nor impressions) by these margins.
+        metric_anomaly = bool(primary_metric) and (
+            (clicks > 0 and cvr_raw > 500) or (impressions > 0 and actions > impressions)
+        )
+        if metric_anomaly:
+            metric_anomaly_note = (
+                f"Action Rate bất thường ({cvr_raw:,.0f}%) — có thể đã map nhầm cột Primary Metric/Click "
+                "(cột giá trị lớn/aggregate như reach/total/impression). Kiểm tra lại mapping cột."
+            )
+            cvr = 0.0
+            cpa_display = 0
+        else:
+            metric_anomaly_note = None
+            cvr = cvr_raw
+            cpa_display = cost_display / actions if actions > 0 else 0
         vs_plan = ((cpa_display - cpa_benchmark) / cpa_benchmark * 100) if cpa_benchmark > 0 else None
 
         # Channel: user selection takes priority — only fall back to name when nothing selected
@@ -1181,7 +1197,8 @@ async def analyze_v2(
             "quality_score": 0, "decision": "", "cost_vnd": round(cost_display),
             "actions": int(actions), "clicks": int(clicks), "impressions": int(impressions),
             "primary_value": int(actions), "supporting_values": sup_values,
-            "warning": "No primary metric events" if actions == 0 else None,
+            "metric_anomaly": metric_anomaly, "metric_anomaly_note": metric_anomaly_note,
+            "warning": metric_anomaly_note or ("No primary metric events" if actions == 0 else None),
         })
 
     detected_channels = list(set(r["channel"] for r in results if r["channel"]))
@@ -1229,6 +1246,15 @@ async def analyze_v2(
     key_learning = _build_key_learning(creative_takeaways, results, cfg, ccy, variance_check, dim_priority)
     recommendations = _build_recommendations(results, cfg, all_channels, ccy, has_variance, dim_priority)
     warnings = _build_warnings(cfg, results, list(df.columns), bool(image_payloads), all_channels)
+    anomalies = [r for r in results if r.get("metric_anomaly")]
+    if anomalies:
+        ents = ", ".join(r["entity"][:30] for r in anomalies[:3])
+        warnings.insert(0, (
+            f"⚠️ Action Rate bất thường ở {len(anomalies)} creative (vd {ents}) — "
+            f"cột Primary Metric ('{primary_metric}') hoặc Click có thể map nhầm cột giá trị lớn/aggregate "
+            "(reach/total/impression). CPA & Action Rate của các creative này đã được ẩn để tránh số phi thực tế; "
+            "chọn lại đúng cột action-count để tính chính xác."
+        ))
     aq_l = str(analysis_question or "").lower()
     ctr_only = any(k in aq_l for k in ["ctr-only", "ctr only", "chỉ phân tích ctr", "chi phan tich ctr", "tối ưu ctr", "toi uu ctr", "attention-only", "attention only"])
     if ctr_only and primary_kind not in ("ctr", "click", "unknown"):

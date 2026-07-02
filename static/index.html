@@ -875,6 +875,7 @@ function metricLine(m){
     if(ma.payment!==false)parts.push(`Click→Payment ${formatRate(m.cvr_pct)}`);
     return parts.join(' · ');
   }
+  if(m.metric_anomaly)return `CTR ${(m.ctr_pct||0).toFixed(1)}% · ${rateMetricLabel()} ⚠️ bất thường (kiểm tra cột Primary Metric/Click) · ${costMetricLabel()} —`;
   return `CTR ${(m.ctr_pct||0).toFixed(1)}% · ${rateMetricLabel()} ${(m.cvr_pct||0).toFixed(1)}% · ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)}`;
 }
 function entityText(m){
@@ -1579,7 +1580,9 @@ function renderCreativeComparison(best,worst){
   const ci=lastResult.creative_insights||{};
   const mode=(getSelectedChannels()[0]||best.channel||'Creative').replace('Moloco / Programmatic','In-app Display');
   const rLabel=rateMetricLabel(), cLabel=costMetricLabel(), formula=primaryFormula();
-  const evidenceBest=`CTR ${(best.ctr_pct||0).toFixed(1)}% · ${rLabel} ${(best.cvr_pct||0).toFixed(1)}% · ${cLabel} ${fmtCpa(best.cpa_vnd||0)} · QS ${(best.quality_score||0).toFixed(1)}. ${formula}.`;
+  const evidenceBest=best.metric_anomaly
+    ? `CTR ${(best.ctr_pct||0).toFixed(1)}% · ${rLabel} ⚠️ bất thường — ${esc(best.metric_anomaly_note||'kiểm tra cột Primary Metric/Click đã map')}`
+    : `CTR ${(best.ctr_pct||0).toFixed(1)}% · ${rLabel} ${(best.cvr_pct||0).toFixed(1)}% · ${cLabel} ${fmtCpa(best.cpa_vnd||0)} · QS ${(best.quality_score||0).toFixed(1)}. ${formula}.`;
   const insightBest=ci.best_insight||`Asset này không thắng ở khả năng kéo click, mà thắng ở chất lượng user sau click. Điểm nên giữ là ${bestProof.offer?`offer ${bestProof.offer}K`: 'offer'}${bestProof.useCase?` + use case ${bestProof.useCase}`:''}. Không tăng budget trực tiếp cho đúng asset hiện tại; hãy dùng nó làm base message và tạo bản mới có offer/CTA dễ đọc hơn${bestProof.size?` trong size ${bestProof.size}`:''}.`;
   const whyText=ci.why_it_wins||`${mode}: trigger có khả năng đến từ offer/use case cụ thể, không phải chỉ từ attention. ${rLabel} cao nghĩa là user đã click có xu hướng hoàn tất primary metric tốt; CTR thấp nghĩa là visual/CTA/placement chưa kéo đủ click volume. Placement = nơi ad được hiển thị trong app.`;
   const proofBest=ci.proof_best||`${bestProof.label}. Metric đọc kèm: low CTR nhưng high ${rLabel} -> message đang lọc đúng intent sau click.`;
