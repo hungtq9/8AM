@@ -23,7 +23,7 @@ def analyze(r: dict, all_results: list) -> dict:
             "signal": "warn",
             "action": (
                 "Text trên ảnh ≤20% diện tích. "
-                "Offer number (VD: 15K) là focal point của image. "
+                "Offer number (VD: offer) là focal point của image. "
                 "Dùng contrast color để offer nổi bật. "
                 "Test với Facebook Text Overlay tool."
             ),
@@ -46,7 +46,7 @@ def analyze(r: dict, all_results: list) -> dict:
             "signal": "ok" if cvr > 5 else "warn",
             "action": (
                 "Primary text: nêu benefit trong câu đầu. "
-                "CTA: cụ thể ('Nhận 15K') không generic ('Xem thêm'). "
+                "CTA: cụ thể ('Nhận offer') không generic ('Xem thêm'). "
                 "Caption phải match với image offer — không tạo cognitive dissonance."
             ),
         },

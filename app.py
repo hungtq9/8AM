@@ -3,7 +3,7 @@ Creative Performance Insight Agent — v4
 Claw-a-thon 2026 — Data Analysis Track
 """
 
-import os, io, json, re, traceback, uuid, httpx, pandas as pd
+import os, io, json, re, traceback, uuid, base64, httpx, pandas as pd
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +15,13 @@ from analysis.metrics import aggregate_metrics
 from analysis.report import build_llm_prompt, format_markdown_report
 from analysis.skills.action import get_action_skill
 
-APP_BUILD = "2026-06-16.27"  # bump mỗi lần sửa để xác nhận đang chạy bản mới (xem /health hoặc badge UI)
+try:  # load .env locally; on AgentBase env is injected at runtime (load_dotenv won't override existing os.environ)
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
+APP_BUILD = "2026-07-02.40"  # bump mỗi lần sửa để xác nhận đang chạy bản mới (xem /health hoặc badge UI)
 app = FastAPI(title="Creative Performance Insight Agent", version="4.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -38,8 +44,384 @@ async def json_exception_handler(request, exc):
 
 LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "Qwen-3-27B")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen/qwen3-5-27b")
 FX_RATE = 26_300
+
+
+async def _generate_creative_insights(best: dict, worst: dict, all_results: list, cfg: dict) -> dict | None:
+    """Call LLM for contextual creative insights based on parsed name attributes + metrics.
+    Returns structured insight dict or None if LLM unavailable."""
+    if not LLM_ENDPOINT or not LLM_API_KEY:
+        return _fallback_creative_insights(best, worst, cfg)
+    best_attrs = _parse_creative_attributes(best.get("entity", ""))
+    worst_attrs = _parse_creative_attributes(worst.get("entity", ""))
+    product = (cfg.get("product") or "App").strip() or "App"
+    rate_label = _rate_metric_label(cfg.get("_resolved_primary_metric", ""))
+    cost_label = _cost_metric_label(cfg.get("_resolved_primary_metric", ""))
+    prompt = (
+        "Bạn là Senior UA Creative Analyst. Phân tích so sánh 2 creative dưới đây.\n\n"
+        f"BEST CREATIVE:\n"
+        f"- Tên: {best.get('entity', '')}\n"
+        f"- Channel: {best.get('channel', '')} | OS: {best.get('os', '')}\n"
+        f"- Metrics: CTR {best.get('ctr_pct', 0):.2f}% | {rate_label} {best.get('cvr_pct', 0):.1f}% | {cost_label} {best.get('cpa_vnd', 0):,.0f} | QS {best.get('quality_score', 0):.1f}\n"
+        f"- Pattern: {best.get('pattern', 'balanced')} | Decision: {best.get('decision', '')}\n"
+        f"- Format: {best_attrs.get('format', '')} | Use case: {best_attrs.get('use_case', '')} | USP: {best_attrs.get('usp', '')} | Offer: {best_attrs.get('offer', '')}\n"
+        f"- Campaign type: {best_attrs.get('campaign_type', '')} | Market: {best_attrs.get('market', '')}\n"
+        f"- Theme keywords: {', '.join(best_attrs.get('themes', []))}\n\n"
+        f"WORST CREATIVE:\n"
+        f"- Tên: {worst.get('entity', '')}\n"
+        f"- Channel: {worst.get('channel', '')} | OS: {worst.get('os', '')}\n"
+        f"- Metrics: CTR {worst.get('ctr_pct', 0):.2f}% | {rate_label} {worst.get('cvr_pct', 0):.1f}% | {cost_label} {worst.get('cpa_vnd', 0):,.0f} | QS {worst.get('quality_score', 0):.1f}\n"
+        f"- Pattern: {worst.get('pattern', 'balanced')} | Decision: {worst.get('decision', '')}\n"
+        f"- Format: {worst_attrs.get('format', '')} | Use case: {worst_attrs.get('use_case', '')} | USP: {worst_attrs.get('usp', '')} | Offer: {worst_attrs.get('offer', '')}\n"
+        f"- Campaign type: {worst_attrs.get('campaign_type', '')} | Market: {worst_attrs.get('market', '')}\n"
+        f"- Theme keywords: {', '.join(worst_attrs.get('themes', []))}\n\n"
+        f"CONTEXT: Product = {product}. Có {len(all_results)} creative trong dataset.\n\n"
+        "TRẢ VỀ JSON THUẦN (không markdown code block, không ```json```, không <think>):\n"
+        '{\n'
+        '  "best_insight": "Tại sao creative này thắng — phân tích CỤ THỂ dựa trên use case/USP/offer trong tên",\n'
+        '  "best_replicate": "Yếu tố cụ thể nào cần giữ lại (dựa trên content/theme thực tế)",\n'
+        '  "best_trigger": "Cơ chế: tại sao use case/USP này trigger conversion tốt hơn",\n'
+        '  "worst_weakness": "Vấn đề cụ thể của creative kém — dựa trên content/theme",\n'
+        '  "worst_insight": "Tại sao creative này không hoạt động",\n'
+        '  "worst_avoid": "Cụ thể cần tránh pattern/framing nào",\n'
+        '  "why_it_wins": "So sánh trực tiếp: best thắng worst ở điểm nào (content-level)",\n'
+        '  "proof_best": "Evidence cụ thể từ naming/attributes của best",\n'
+        '  "proof_worst": "Evidence cụ thể từ naming/attributes của worst",\n'
+        '  "next_test": "Đề xuất test cụ thể dựa trên content gap giữa best và worst"\n'
+        '}\n\n'
+        "RULES:\n"
+        "- Viết tiếng Việt, giữ technical terms tiếng Anh\n"
+        "- Mỗi field 1-2 câu, trực tiếp, KHÔNG lặp lại metric numbers\n"
+        "- Insight phải DỰA TRÊN NỘI DUNG creative (use case, USP, offer framing) — KHÔNG generic\n"
+        "- Nếu tên creative chứa thông tin use case/USP rõ ràng, phân tích dựa trên đó\n"
+        "- Nếu không đủ info từ tên, dựa trên pattern metric + channel context\n"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{LLM_ENDPOINT}/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json={"model": LLM_MODEL, "messages": [{"role": "user", "content": prompt}], "temperature": 0.3, "max_tokens": 1500},
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+            content = re.sub(r'^```(?:json)?\s*', '', content.strip())
+            content = re.sub(r'\s*```$', '', content.strip())
+            return json.loads(content)
+    except Exception as e:
+        print(f"[LLM creative insight] Error: {e}")
+        return _fallback_creative_insights(best, worst, cfg)
+
+
+async def _read_image_uploads(images: list[UploadFile] | None) -> list[dict]:
+    payloads = []
+    for img in images or []:
+        try:
+            data = await img.read()
+        except Exception:
+            data = b""
+        if not data:
+            continue
+        payloads.append({
+            "name": img.filename or "",
+            "content_type": img.content_type or "image/jpeg",
+            "b64": base64.b64encode(data).decode("ascii"),
+        })
+    return payloads
+
+
+def _norm_asset_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
+
+
+def _match_image_payload(entity: str, image_payloads: list[dict]) -> dict | None:
+    if not image_payloads:
+        return None
+    ent = _norm_asset_name(entity)
+    if not ent:
+        return image_payloads[0]
+    best = None
+    best_score = 0
+    ent_tokens = {t for t in re.split(r"[^a-z0-9]+", str(entity or "").lower()) if len(t) >= 3}
+    for payload in image_payloads:
+        name = payload.get("name", "")
+        norm = _norm_asset_name(name)
+        if norm and (norm in ent or ent in norm):
+            return payload
+        name_tokens = {t for t in re.split(r"[^a-z0-9]+", name.lower()) if len(t) >= 3}
+        score = len(ent_tokens & name_tokens)
+        if score > best_score:
+            best = payload
+            best_score = score
+    return best if best_score >= 2 else None
+
+
+async def _visual_evidence_for_creative(item: dict, image_payloads: list[dict]) -> dict:
+    payload = _match_image_payload(item.get("entity", ""), image_payloads)
+    if not payload:
+        return {
+            "status": "pending",
+            "source": "Chờ phân tích hình ảnh",
+            "summary": "Phân tích hình ảnh: chưa match được image upload với creative name, nên chưa kết luận về màu/font/hook/layout.",
+        }
+    if not LLM_ENDPOINT or not LLM_API_KEY:
+        return {
+            "status": "pending",
+            "source": "Chờ phân tích hình ảnh",
+            "summary": f"Phân tích hình ảnh: đã match image {payload.get('name')}, nhưng chưa cấu hình LLM vision để đọc màu/font/hook/layout.",
+        }
+    vision_model = os.getenv("VISION_MODEL") or os.getenv("LLM_MODEL", "qwen/qwen3-5-27b")
+    prompt = (
+        "You are a senior creative analyst. Analyze the uploaded ad image and return ONLY compact JSON (no markdown). "
+        "Use Vietnamese with English marketing terms. Do not infer performance from the image alone. "
+        "Required fields:\n"
+        "- color_palette: list of dominant colors (hex or name)\n"
+        "- contrast_level: high/medium/low — does the CTA/offer stand out?\n"
+        "- text_coverage_pct: estimated % of image area covered by text\n"
+        "- font_readability: high/medium/low — is text clear at mobile thumb-size?\n"
+        "- cta_visibility: description of CTA button/text — present? contrast? size?\n"
+        "- offer_visibility: is the offer/benefit dominant and readable at thumb-size?\n"
+        "- hook: what grabs attention first? (focal point / thumb-stop element)\n"
+        "- visual_hierarchy: eye path description (Offer→CTA→Brand? cluttered?)\n"
+        "- visual_why: 1-2 sentence summary of what makes this creative visually effective or weak\n"
+        "- visual_risk: any visual issues (too much text, low contrast, cluttered, CTA hidden)"
+    )
+    try:
+        b64_data = payload.get("b64", "")
+        if len(b64_data) > 2_000_000:
+            import base64
+            from io import BytesIO
+            img_bytes = base64.b64decode(b64_data)
+            try:
+                from PIL import Image
+                img = Image.open(BytesIO(img_bytes))
+                img.thumbnail((1024, 1024), Image.LANCZOS)
+                buf = BytesIO()
+                img.save(buf, format="JPEG", quality=80)
+                b64_data = base64.b64encode(buf.getvalue()).decode()
+                content_type = "image/jpeg"
+            except ImportError:
+                content_type = payload.get("content_type", "image/jpeg")
+        else:
+            content_type = payload.get("content_type", "image/jpeg")
+        async with httpx.AsyncClient(timeout=45) as client:
+            resp = await client.post(
+                f"{LLM_ENDPOINT}/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": vision_model,
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:{content_type};base64,{b64_data}"}},
+                        ],
+                    }],
+                    "temperature": 0.2,
+                    "max_tokens": 1000,
+                },
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+            content = re.sub(r'^```(?:json)?\s*', '', content)
+            content = re.sub(r'\s*```$', '', content)
+            parsed = json.loads(content)
+            summary = parsed.get("visual_why") or parsed.get("hook") or "Đã đọc visual, cần xem JSON detail."
+            return {"status": "verified", "source": payload.get("name"), "summary": summary, "detail": parsed}
+    except httpx.HTTPStatusError as e:
+        status_code = e.response.status_code
+        body = e.response.text[:300]
+        return {
+            "status": "pending",
+            "source": "Chờ phân tích hình ảnh",
+            "summary": f"Phân tích hình ảnh: đã match image {payload.get('name')}, vision call lỗi HTTP {status_code} (model={vision_model}). Detail: {body}",
+        }
+    except json.JSONDecodeError:
+        return {
+            "status": "partial",
+            "source": payload.get("name"),
+            "summary": f"Phân tích hình ảnh: vision trả kết quả nhưng không parse được JSON. Raw: {content[:200]}",
+        }
+    except Exception as e:
+        return {
+            "status": "pending",
+            "source": "Chờ phân tích hình ảnh",
+            "summary": f"Phân tích hình ảnh: đã match image {payload.get('name')}, vision call lỗi ({type(e).__name__}: {str(e)[:150]}).",
+        }
+
+
+async def _generate_visual_pair_evidence(best: dict, worst: dict, image_payloads: list[dict]) -> dict:
+    best_visual = await _visual_evidence_for_creative(best, image_payloads)
+    worst_visual = await _visual_evidence_for_creative(worst, image_payloads)
+    bv_ok = best_visual.get("status") == "verified"
+    wv_ok = worst_visual.get("status") == "verified"
+    if bv_ok or wv_ok:
+        parts = []
+        if bv_ok:
+            bd = best_visual.get("detail", {})
+            parts.append(f"Best: {best_visual.get('summary')} (text ~{bd.get('text_coverage_pct', '?')}%, contrast {bd.get('contrast_level', '?')}, CTA: {bd.get('cta_visibility', '?')})")
+        if wv_ok:
+            wd = worst_visual.get("detail", {})
+            parts.append(f"Worst: {worst_visual.get('summary')} (text ~{wd.get('text_coverage_pct', '?')}%, contrast {wd.get('contrast_level', '?')}, CTA: {wd.get('cta_visibility', '?')})")
+        comparison = " | ".join(parts)
+    else:
+        comparison = "Phân tích hình ảnh: chưa khả dụng — insight hiện tại chỉ dựa trên số liệu và tên creative."
+    return {"best": best_visual, "worst": worst_visual, "comparison": comparison}
+
+
+async def _generate_notification_copy_why(best: dict, worst: dict, cfg: dict, nf: dict) -> dict | None:
+    """LLM copy-analysis for notification 'Why It Wins': reasons about title/description/promotion
+    LANGUAGE (tone, benefit clarity, offer framing, urgency, audience-fit) — not invented numbers.
+    Evidence-bound: only analyzes copy fields that actually exist in the data (mục 12 rule)."""
+    if not LLM_ENDPOINT or not LLM_API_KEY:
+        return None
+    has_title = bool(nf.get("title"))
+    has_desc = bool(nf.get("description"))
+    if not (has_title or has_desc):
+        return None
+
+    def _copy_block(item):
+        lines = []
+        if has_title:
+            lines.append(f"  Title: {item.get('title') or '(trống)'}")
+        if has_desc:
+            lines.append(f"  Description: {item.get('description') or '(trống)'}")
+        if item.get("promotion"):
+            lines.append(f"  Promotion: {item.get('promotion')}")
+        if item.get("send_time"):
+            lines.append(f"  Send time: {item.get('send_time')}")
+        cr = item.get("ctr_pct")
+        lines.append(f"  Click Rate: {cr:.3f}%" if isinstance(cr, (int, float)) else "  Click Rate: N/A")
+        return "\n".join(lines)
+
+    segment = cfg.get("segment", "")
+    age = f"{cfg.get('age_min', '')}-{cfg.get('age_max', '')}".strip("-")
+    product = (cfg.get("product") or "").strip()
+    goal = cfg.get("qs_objective", "") or cfg.get("goal", "")
+    audience = f"Segment: {segment or 'N/A'} | Tuổi: {age or 'N/A'} | Product: {product or 'N/A'} | Goal: {goal or 'N/A'}"
+    present = ", ".join([x for x, ok in [("title", has_title), ("description", has_desc)] if ok])
+    prompt = (
+        "Bạn là chuyên gia copywriting cho push/in-app notification. So sánh COPY của 2 notification "
+        "(best vs worst theo Click Rate) và giải thích VÌ SAO copy tốt/tệ. "
+        f"CHỈ phân tích các trường copy ĐƯỢC CUNG CẤP ({present}); KHÔNG suy đoán về trường không có. "
+        "KHÔNG bịa số liệu — chỉ phân tích ngôn ngữ/copy.\n\n"
+        f"AUDIENCE: {audience}\n\n"
+        f"BEST (Click Rate cao hơn):\n{_copy_block(best)}\n\n"
+        f"WORST (Click Rate thấp hơn):\n{_copy_block(worst)}\n\n"
+        "TRẢ VỀ JSON THUẦN (không markdown code block, không ```json```, không <think>):\n"
+        "{\n"
+        '  "trigger": "Cơ chế tâm lý chính khiến copy best kéo click — 1 câu, cụ thể theo nội dung copy",\n'
+        '  "why_best_wins": "Vì sao best thắng: tone/giọng điệu, độ rõ benefit, offer framing (số tiền/điều kiện), urgency, emoji/format, readability — nêu yếu tố CỤ THỂ có trong copy",\n'
+        '  "win_driver": "Best thắng chủ yếu nhờ TITLE, DESCRIPTION hay OFFER? Chọn 1 và giải thích ngắn",\n'
+        '  "audience_fit": "Copy best hợp segment/độ tuổi nào và vì sao",\n'
+        '  "why_worst_loses": "Vì sao worst kém: thiếu benefit rõ / offer chìm / generic / thiếu urgency",\n'
+        '  "replicate": "Yếu tố copy cụ thể cần giữ và nhân rộng",\n'
+        '  "avoid": "Pattern copy cần tránh",\n'
+        '  "next_test": "1 test copy cụ thể để xác nhận driver (title vs offer vs urgency)"\n'
+        "}\n\n"
+        "RULES: viết tiếng Việt tự nhiên (giữ technical/marketing terms tiếng Anh), mỗi field 1-2 câu, "
+        "dựa TRÊN NỘI DUNG copy thực tế của best/worst, KHÔNG generic. "
+        "KHÔNG nhắc tên thương hiệu/sản phẩm nào khác ngoài product được cung cấp ở trên; "
+        "nếu product = N/A thì dùng từ trung tính (app/dịch vụ/ưu đãi), tuyệt đối không tự bịa tên brand."
+    )
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{LLM_ENDPOINT}/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json={"model": LLM_MODEL, "messages": [{"role": "user", "content": prompt}], "temperature": 0.3, "max_tokens": 900},
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+            content = re.sub(r'^```(?:json)?\s*', '', content.strip())
+            content = re.sub(r'\s*```$', '', content.strip())
+            data = json.loads(content)
+            data["_source"] = "llm_copy_analysis"
+            return data
+    except Exception as e:
+        print(f"[LLM notification copy-why] Error: {type(e).__name__}: {e}")
+        return None
+
+
+async def _augment_notification_copy_why(result: dict, cfg: dict) -> dict:
+    """Post-process notification result: run LLM copy-analysis and fold it into
+    key_learning + a top-level `copy_why` the frontend can render in 'Why It Wins'."""
+    try:
+        results = result.get("metrics_summary") or []
+        nf = result.get("notification_fields") or {}
+        if len(results) < 2 or not (nf.get("title") or nf.get("description")):
+            return result
+        best = max(results, key=lambda r: ((r.get("ctr_pct") or 0), (r.get("sent_rate_pct") or 0), (r.get("quality_score") or 0)))
+        worst = min(results, key=lambda r: ((r.get("ctr_pct") or 0), (r.get("sent_rate_pct") or 0), -(r.get("quality_score") or 0)))
+        if best.get("entity") == worst.get("entity"):
+            return result
+        copy_why = await _generate_notification_copy_why(best, worst, cfg, nf)
+        if not copy_why:
+            return result
+        result["copy_why"] = copy_why
+        kl = result.get("key_learning") or {}
+        wb = (copy_why.get("why_best_wins") or "").strip()
+        wd = (copy_why.get("win_driver") or "").strip()
+        wl = (copy_why.get("why_worst_loses") or "").strip()
+        if wb:
+            kl["learning"] = f"{kl.get('learning', '')} — Copy (AI): {wb}".strip(" —")
+        if wl:
+            kl["bottleneck"] = f"{kl.get('bottleneck', '')} — Copy (AI): {wl}".strip(" —")
+        st = kl.get("structured") or {}
+        if wd:
+            st["copy_win_driver"] = wd
+        st["copy_why"] = copy_why
+        kl["structured"] = st
+        result["key_learning"] = kl
+        return result
+    except Exception as e:
+        print(f"[augment noti copy-why] {type(e).__name__}: {e}")
+        return result
+
+
+def _fallback_creative_insights(best: dict, worst: dict, cfg: dict) -> dict:
+    """Attribute-enhanced fallback when LLM is unavailable."""
+    ba = _parse_creative_attributes(best.get("entity", ""))
+    wa = _parse_creative_attributes(worst.get("entity", ""))
+    product = (cfg.get("product") or "App").strip() or "App"
+    b_desc = ba.get("usp") or ba.get("use_case") or ", ".join(ba.get("themes", [])[:3]) or "creative"
+    w_desc = wa.get("usp") or wa.get("use_case") or ", ".join(wa.get("themes", [])[:3]) or "creative"
+    b_offer = f" (offer {ba['offer']})" if ba.get("offer") else ""
+    w_offer = f" (offer {wa['offer']})" if wa.get("offer") else ""
+    pattern = best.get("pattern", "balanced")
+    if pattern == "low_ctr_high_cvr":
+        insight = f"Creative \"{b_desc}\"{b_offer} thắng ở chất lượng user sau click, không phải attention. Use case/USP cụ thể đang lọc đúng user có nhu cầu thật."
+        replicate = f"Giữ framing về {b_desc}{b_offer}; dùng làm base message và tạo bản mới với visual/CTA mạnh hơn."
+        trigger = f"Use case \"{b_desc}\" tạo qualified intent — user nhận diện nhu cầu cụ thể nên action rate cao dù CTR thấp."
+    elif pattern == "high_ctr_low_cvr":
+        insight = f"Creative \"{b_desc}\"{b_offer} kéo được attention tốt nhưng chưa qualify đúng intent. Hook/visual đang tạo curiosity click nhiều hơn qualified click."
+        replicate = f"Giữ visual hook của {b_desc}; thêm qualifying message rõ hơn về action cần làm trong {product}."
+        trigger = f"Visual/hook của \"{b_desc}\" tạo attention tốt trong feed — cần thêm message narrowing để filter unqualified click."
+    else:
+        insight = f"Creative \"{b_desc}\"{b_offer} cân bằng tốt giữa attention và conversion. Content/framing đang match với user intent."
+        replicate = f"Dùng \"{b_desc}\" làm base concept; giữ nguyên core message/offer và test variant visual."
+        trigger = f"\"{b_desc}\" balance tốt giữa kéo click và qualify intent — phù hợp làm template cho iteration."
+    rate_label = _rate_metric_label(cfg.get("_resolved_primary_metric", ""))
+    cost_label = _cost_metric_label(cfg.get("_resolved_primary_metric", ""))
+    verified_best = f"Đã xác nhận (số liệu): CTR {best.get('ctr_pct', 0):.2f}%, {rate_label} {best.get('cvr_pct', 0):.1f}%, {cost_label} {best.get('cpa_vnd', 0):,.0f}, QS {best.get('quality_score', 0):.1f}."
+    verified_worst = f"Đã xác nhận (số liệu): CTR {worst.get('ctr_pct', 0):.2f}%, {rate_label} {worst.get('cvr_pct', 0):.1f}%, {cost_label} {worst.get('cpa_vnd', 0):,.0f}, QS {worst.get('quality_score', 0):.1f}."
+    visual_pending = "Phân tích hình ảnh (màu/font/hook/layout): chưa khả dụng — cần bật phân tích hình ảnh."
+    return {
+        "best_insight": f"{verified_best} Giả thuyết (từ tên creative): {insight} {visual_pending}",
+        "best_replicate": replicate,
+        "best_trigger": f"Giả thuyết (từ tên creative): {trigger} {visual_pending}",
+        "worst_weakness": f"Creative \"{w_desc}\"{w_offer} không tạo đủ signal — có thể do framing/USP chưa rõ ràng hoặc không match với user intent trên channel {worst.get('channel', '')}.",
+        "worst_insight": f"\"{w_desc}\" chưa truyền đạt được giá trị cụ thể. User không nhận diện được lý do cần click/action.",
+        "worst_avoid": f"Tránh framing kiểu \"{w_desc}\" nếu không gắn với benefit cụ thể. Cần message rõ hơn về user nhận gì.",
+        "why_it_wins": f"\"{b_desc}\" thắng \"{w_desc}\" vì use case/USP cụ thể hơn, giúp user tự nhận diện nhu cầu.",
+        "proof_best": f"{verified_best} Giả thuyết (từ tên creative): creative \"{b_desc}\", use case {ba.get('use_case', 'N/A')}, format {ba.get('format', 'N/A')}{b_offer}. {visual_pending}",
+        "proof_worst": f"{verified_worst} Giả thuyết (từ tên creative): creative \"{w_desc}\", use case {wa.get('use_case', 'N/A')}, format {wa.get('format', 'N/A')}{w_offer}. {visual_pending}",
+        "next_test": f"Test 3 variant từ best concept \"{b_desc}\": (1) visual hierarchy rõ hơn, (2) CTA gắn benefit cụ thể, (3) format/size phù hợp channel {best.get('channel', '')}.",
+    }
 
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.mount("/demo", StaticFiles(directory=Path(__file__).parent / "demo"), name="demo")
@@ -138,6 +520,77 @@ def _extract_size(entity: str) -> str:
     return match.group(0) if match else ""
 
 
+def _parse_creative_attributes(name: str) -> dict:
+    """Extract meaningful attributes from any creative naming convention."""
+    attrs = {"themes": [], "usp": "", "format": "", "use_case": "", "offer": "", "campaign_type": "", "market": "", "scheme": ""}
+    if not name:
+        return attrs
+    upper = name.upper()
+    attrs["format"] = _extract_format(name)
+    attrs["size"] = _extract_size(name) or ""
+    money = re.findall(r'(\d+)\s*[Kk]', name)
+    if money:
+        attrs["offer"] = f"{money[0]}K"
+    for kw in ["discount", "giảm", "voucher", "ưu đãi", "free", "cashback", "promo"]:
+        if kw.lower() in name.lower():
+            attrs["offer"] = attrs["offer"] or kw
+            break
+    uc_map = {
+        "TIKTOKSHOP": "use case", "TIKTOK SHOP": "use case",
+        "GRAB": "Grab", "BILL": "Bill Payment", "BILLING": "Bill Payment",
+        "SCAN": "QR Scan", "TRANSFER": "Transfer", "TOPUP": "Top Up",
+        "GAME": "Gaming", "FOOD": "Food/F&B", "FASTFOOD": "Fast Food",
+        "JOB": "Job/Recruitment", "VIỆC LÀM": "Job/Recruitment",
+        "NHÂN VIÊN": "Job/Recruitment", "TUYỂN DỤNG": "Job/Recruitment",
+        "SHOP": "Shopping", "MUA SẮM": "Shopping",
+        "THANH TOÁN": "Payment", "PAYMENT": "Payment",
+        "ELECTRIC": "Electricity Bill", "ĐIỆN": "Electricity Bill",
+        "WATER": "Water Bill", "NƯỚC": "Water Bill",
+        "DANH SÁCH": "Listing/Directory",
+    }
+    for key, val in uc_map.items():
+        if key in upper:
+            attrs["use_case"] = val
+            break
+    segments = re.split(r'[-_\s]+', name)
+    noise = {"IMG", "ADS", "US", "VN", "EB", "EB3", "USP", "UA", "V1", "V2", "V3", "V4", "V5", "Q1", "Q2", "Q3", "Q4", "AND", "IOS"}
+    meaningful = [s for s in segments if len(s) > 2 and not s.isdigit() and s.upper() not in noise]
+    attrs["themes"] = meaningful[:6]
+    if "USP" in upper:
+        idx = upper.index("USP")
+        usp_part = name[idx+3:].strip("-_ ")
+        usp_part = re.sub(r'\s*\d{1,2}[-/]\d{4}.*$', '', usp_part)
+        usp_part = re.sub(r'\s*\d{4,}-\d{4}$', '', usp_part)
+        attrs["usp"] = usp_part.strip("-_ ")
+    elif attrs["use_case"]:
+        for key in uc_map:
+            if key in upper:
+                idx = upper.index(key)
+                desc = name[idx:]
+                desc = re.sub(r'\s*\d+-\d+$', '', desc).strip("-_ ")
+                if len(desc) > len(key) + 2:
+                    attrs["usp"] = desc
+                else:
+                    attrs["usp"] = attrs["use_case"]
+                break
+    for s in segments:
+        su = s.upper()
+        if su in ("EB", "EB3"):
+            attrs["campaign_type"] = "Employer Branding"
+        elif su == "UA":
+            attrs["campaign_type"] = "User Acquisition"
+    if "US" in [s.upper() for s in segments]:
+        attrs["market"] = "US"
+    elif "VN" in [s.upper() for s in segments]:
+        attrs["market"] = "VN"
+    moloco_parts = name.split("_")
+    if len(moloco_parts) >= 7 and not name.startswith("ZPI"):
+        attrs["scheme"] = moloco_parts[0]
+        if len(moloco_parts[1]) > 2 and not moloco_parts[1].isdigit():
+            attrs["usp"] = attrs["usp"] or moloco_parts[1]
+    return attrs
+
+
 def _guess_os(entity: str) -> str:
     """Detect OS from entity/campaign name string."""
     e = entity.upper()
@@ -155,17 +608,17 @@ def _is_srn_channel(channel: str) -> bool:
 
 
 def _fix_mojibake(obj):
-    """Fix mojibake: UTF-8 bytes stored as CP1252 codepoints in the Python source.
-    Strategy: replace CP1252-specific chars (€→0x80, '→0x91, "→0x94, —→0x97, etc.)
-    with their raw byte equivalents, then encode as Latin-1 → decode as UTF-8."""
+    """Runtime safety net for mojibake from LLM output.
+    Source strings are now clean UTF-8 (build .37); this only catches
+    mojibake in dynamic content (e.g. Qwen response)."""
     _CP1252 = {
-        '€':'\x80','‚':'\x82','ƒ':'\x83','„':'\x84',
-        '…':'\x85','†':'\x86','‡':'\x87','ˆ':'\x88',
-        '‰':'\x89','Š':'\x8a','‹':'\x8b','Œ':'\x8c',
-        'Ž':'\x8e','‘':'\x91','’':'\x92','“':'\x93',
-        '”':'\x94','•':'\x95','–':'\x96','—':'\x97',
-        '˜':'\x98','™':'\x99','š':'\x9a','›':'\x9b',
-        'œ':'\x9c','ž':'\x9e','Ÿ':'\x9f',
+        '€':'','‚':'','ƒ':'','„':'',
+        '…':'','†':'','‡':'','ˆ':'',
+        '‰':'','Š':'','‹':'','Œ':'',
+        'Ž':'','‘':'','’':'','“':'',
+        '”':'','•':'','–':'','—':'',
+        '˜':'','™':'','š':'','›':'',
+        'œ':'','ž':'','Ÿ':'',
     }
     if isinstance(obj, str):
         try:
@@ -243,7 +696,7 @@ def _skill_moloco(r: dict, all_results: list) -> dict:
                 "finding": f"CTA trên image banner phải là button riêng biệt, không phải text thường. "
                            f"{'CTR thấp có thể do CTA không clickable-looking.' if ctr < 0.5 else 'CTA đang tạo được click.'}",
                 "signal": "ok" if ctr > 0.3 else "warn",
-                "action": "CTA phải: (1) Có màu nền khác biệt (contrast button); (2) Text cụ thể: 'Nhận 15K' không phải 'Tải ngay'; "
+                "action": "CTA phải: (1) Có màu nền khác biệt (contrast button); (2) Text cụ thể: 'Nhận offer' không phải 'Tải ngay'; "
                           "(3) Đủ to để tap trên mobile (min 44px height); (4) Positioned gần offer, không tách biệt.",
             },
         ]
@@ -337,7 +790,7 @@ def _skill_tiktok(r: dict, all_results: list) -> dict:
                 "icon": "✍️",
                 "finding": "Static TikTok ad: CTA phải cực kỳ rõ ràng vì không có movement để guide attention.",
                 "signal": "ok" if ctr > 1 else "warn",
-                "action": "CTA: button shape + action text cụ thể. 'Nhận 15K ngay' tốt hơn 'Tìm hiểu thêm'. Position: bottom center hoặc right.",
+                "action": "CTA: button shape + action text cụ thể. 'Nhận offer ngay' tốt hơn 'Tìm hiểu thêm'. Position: bottom center hoặc right.",
             },
             {
                 "dim": "Brand & Offer Clarity",
@@ -365,7 +818,7 @@ def _skill_tiktok(r: dict, all_results: list) -> dict:
             "icon": "🎣",
             "finding": f"CTR {ctr:.2f}% — {'hook chưa đủ mạnh để thumb-stop trong scroll feed' if ctr < 1.5 else 'hook đang tạo được click volume tốt'}.",
             "signal": "warn" if ctr < 1.5 else "ok",
-            "action": "Test 3 hook approach: (1) Offer-dominant — số tiền lớn, contrast cao ngay frame 0; (2) Human-context — người dùng thật đang checkout; (3) Problem-first — show pain point trước khi reveal solution.",
+            "action": "Test 3 hook approach: (1) Offer-dominant — số tiền lớn, contrast cao ngay frame 0; (2) Human-context — nguoi dung that trong boi canh ra quyet dinh; (3) Problem-first — show pain point trước khi reveal solution.",
         },
         {
             "dim": "Offer Framing trong Hook",
@@ -384,7 +837,7 @@ def _skill_tiktok(r: dict, all_results: list) -> dict:
         {
             "dim": "CTA & Text Overlay",
             "icon": "✍️",
-            "finding": "Text overlay và CTA phải cụ thể, không generic — 'Tải Zalopay nhận 15K' tốt hơn 'Tải ngay'.",
+            "finding": "Text overlay và CTA phải cụ thể, không generic — 'Tải app nhận offer' tốt hơn 'Tải ngay'.",
             "signal": "ok" if cvr > 5 else "warn",
             "action": "CTA cụ thể: kết nối với offer + action trong app. Kiểm tra: user biết họ nhận gì sau khi tải không? Text overlay: dùng bold + màu tương phản cao.",
         },
@@ -420,7 +873,7 @@ def _skill_facebook(r: dict, all_results: list) -> dict:
             "icon": "📊",
             "finding": "Meta penalizes ads với text quá nhiều trên image. Offer phải visible ngay từ thumbnail.",
             "signal": "warn",
-            "action": "Rule: text trên ảnh ≤20% diện tích. Offer number (VD: 15K) nên là focal point của image. Dùng contrast color để offer nổi bật.",
+            "action": "Rule: text trên ảnh ≤20% diện tích. Offer number (VD: offer) nên là focal point của image. Dùng contrast color để offer nổi bật.",
         },
         {
             "dim": "Hook / Thumbnail",
@@ -434,7 +887,7 @@ def _skill_facebook(r: dict, all_results: list) -> dict:
             "icon": "✍️",
             "finding": f"CVR {cvr:.1f}% — Ad copy phải qualify đúng intent trước khi user click.",
             "signal": "ok" if cvr > 5 else "warn",
-            "action": "Primary text: nêu pain/benefit trong câu đầu. CTA: cụ thể ('Nhận 15K') không generic ('Xem thêm'). Caption phải match với image offer.",
+            "action": "Primary text: nêu pain/benefit trong câu đầu. CTA: cụ thể ('Nhận offer') không generic ('Xem thêm'). Caption phải match với image offer.",
         },
     ]
     gap_note = ""
@@ -460,7 +913,7 @@ def _skill_google(r: dict, all_results: list) -> dict:
             "icon": "📢",
             "finding": f"CTR {ctr:.2f}% — Headline phải nêu rõ benefit cụ thể, không chỉ brand name.",
             "signal": "warn" if ctr < 0.5 else "ok",
-            "action": "Test headline variants: benefit-led ('Nhận 15K khi tải') vs feature-led ('Thanh toán mọi nơi') vs use-case-led ('Thanh toán TikTok Shop').",
+            "action": "Test headline variants: benefit-led ('Nhận offer khi tải') vs feature-led ('Thanh toán mọi nơi') vs use-case-led ('Thanh toán use case').",
         },
         {
             "dim": "Asset Quality (Image/Video)",
@@ -604,6 +1057,7 @@ async def analyze_v2(
         df = pd.read_excel(io.BytesIO(content)) if filename.endswith((".xlsx", ".xls")) else pd.read_csv(io.BytesIO(content))
     except Exception as e:
         raise HTTPException(400, f"Cannot parse file: {e}")
+    image_payloads = await _read_image_uploads(images)
 
     df.columns = [c.strip().lower() for c in df.columns]
 
@@ -657,7 +1111,9 @@ async def analyze_v2(
     )
     if is_notification:
         try:
-            return _analyze_notification(df, cfg, mode_info, images)
+            noti_result = _analyze_notification(df, cfg, mode_info, image_payloads)
+            noti_result = await _augment_notification_copy_why(noti_result, cfg)
+            return noti_result
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -772,11 +1228,27 @@ async def analyze_v2(
     creative_takeaways = _build_creative_takeaways(results, cfg, all_channels, ccy, has_variance, dim_priority)
     key_learning = _build_key_learning(creative_takeaways, results, cfg, ccy, variance_check, dim_priority)
     recommendations = _build_recommendations(results, cfg, all_channels, ccy, has_variance, dim_priority)
-    warnings = _build_warnings(cfg, results, list(df.columns), bool(images), all_channels)
+    warnings = _build_warnings(cfg, results, list(df.columns), bool(image_payloads), all_channels)
     aq_l = str(analysis_question or "").lower()
     ctr_only = any(k in aq_l for k in ["ctr-only", "ctr only", "chỉ phân tích ctr", "chi phan tich ctr", "tối ưu ctr", "toi uu ctr", "attention-only", "attention only"])
     if ctr_only and primary_kind not in ("ctr", "click", "unknown"):
         warnings.append(f"Metric/context conflict: Primary Metric(s) đang là {primary_metric}, nhưng Analysis Brief yêu cầu CTR/attention-only. Report chỉ nên kết luận attention/packaging, không kết luận downstream quality.")
+
+    valid_for_insights = [r for r in results if r.get("actions", 0) > 0]
+    creative_insights = None
+    if valid_for_insights:
+        best_ci = max(valid_for_insights, key=lambda r: r.get("quality_score", 0))
+        worst_ci = min(valid_for_insights, key=lambda r: r.get("quality_score", 0))
+        if best_ci["entity"] != worst_ci["entity"]:
+            creative_insights = await _generate_creative_insights(best_ci, worst_ci, results, cfg)
+            visual_evidence = await _generate_visual_pair_evidence(best_ci, worst_ci, image_payloads)
+            if creative_insights:
+                creative_insights["visual_evidence"] = visual_evidence
+                creative_insights["why_it_wins"] = f"{creative_insights.get('why_it_wins', '')} {visual_evidence.get('comparison', '')}".strip()
+                if visual_evidence.get("best", {}).get("summary"):
+                    creative_insights["proof_best"] = f"{creative_insights.get('proof_best', '')} {visual_evidence['best']['summary']}".strip()
+                if visual_evidence.get("worst", {}).get("summary"):
+                    creative_insights["proof_worst"] = f"{creative_insights.get('proof_worst', '')} {visual_evidence['worst']['summary']}".strip()
 
     response = {
         "status": "ok", "rows_processed": len(df), "entities_analyzed": len(results),
@@ -797,6 +1269,7 @@ async def analyze_v2(
         "cost_metric_label": _cost_metric_label(primary_metric),
         "primary_metric_formula": _primary_metric_formula(primary_metric),
         "action_skill": action_skill,
+        "creative_insights": creative_insights,
     }
     return _fix_mojibake(response)
 
@@ -818,16 +1291,34 @@ def _find_first_col(columns, candidates):
     return ""
 
 
+_COL_ALIASES = {
+    "cost": ["chi phí", "chi tiêu", "spend", "spent", "spending", "cost", "budget"],
+    "click": ["lượt nhấp", "lượt click", "nhấp", "click", "clicks"],
+    "impression": ["hiển thị", "lượt hiển thị", "impression", "impressions", "hiển thị (imp)"],
+    "install": ["cài đặt", "lượt cài đặt", "install", "installs"],
+    "login": ["đăng nhập", "login", "login_success", "logins"],
+    "payment": ["thanh toán", "mua", "payment", "purchase", "first payment"],
+    "campaign_name": ["tên chiến dịch", "chiến dịch", "campaign name", "campaign_name"],
+    "ad_name": ["tên quảng cáo", "quảng cáo", "ad name", "ad_name"],
+    "npu": ["npu", "new paying user", "người dùng thanh toán mới"],
+}
+
+def _normalize_col(s):
+    return re.sub(r"[\s_\-]+", " ", str(s).lower()).strip()
+
 def _find_col(selected, columns, keyword):
     selected = [str(s).lower() for s in (selected or [])]
     columns = list(columns)
+    aliases = _COL_ALIASES.get(keyword, [keyword])
+    norm_aliases = [_normalize_col(a) for a in aliases]
     for s in selected:
-        if keyword in s:
+        if keyword in s or _normalize_col(s) in norm_aliases:
             for c in columns:
                 if c.lower() == s:
                     return c
     for c in columns:
-        if keyword in c.lower():
+        nc = _normalize_col(c)
+        if keyword in c.lower() or nc in norm_aliases:
             return c
     return ""
 
@@ -853,7 +1344,7 @@ def _extract_promotion_text(*parts):
         r"\b\d+\.?\d*\s?%",
         r"\b\d{1,3}[.,]?\d{3}\s?(?:d|đ|vnd)\b",
         r"(?:voucher|cashback|discount|sale|free|promo|promotion)",
-        r"(?:giáº£m|Æ°u Ä‘Ã£i|hoÃ n tiá»n|miá»…n phÃ­|voucher|khuyáº¿n mÃ£i)",
+        r"(?:giảm|ưu đãi|hoàn tiền|miễn phí|voucher|khuyến mãi)",
     ]
     found = []
     for pat in patterns:
@@ -1093,9 +1584,9 @@ def _analyze_notification(df, cfg, mode_info, images):
         "analysis_mode": "notification", "possible_modes": mode_info.get("possible_modes", ["notification"]),
         "channels": ["Notification"], "detected_channels": ["Notification"],
         "metrics_summary": results, "audience_context": _build_audience_context(cfg),
-        "creative_takeaways": _build_notification_takeaways(results, hourly, has_payment),
-        "key_learning": _build_notification_key_learning(results, hourly, has_payment, cfg),
-        "recommendations": _build_notification_recommendations(results, hourly, has_payment, has_open),
+        "creative_takeaways": _build_notification_takeaways(results, hourly, has_payment, title_col=title_col, desc_col=desc_col),
+        "key_learning": _build_notification_key_learning(results, hourly, has_payment, cfg, title_col=title_col, desc_col=desc_col),
+        "recommendations": _build_notification_recommendations(results, hourly, has_payment, has_open, title_col=title_col, desc_col=desc_col),
         "warnings": _build_notification_warnings(title_col, desc_col, time_col, payment_col, bool(images)),
         "variance_check": [], "dimension_priority": [{
             "channel": "Notification / In-app",
@@ -1188,7 +1679,7 @@ def _build_notification_funnel_breakdown(results):
     }
 
 
-def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
+def _build_notification_key_learning(results, hourly, has_payment, cfg=None, title_col=None, desc_col=None):
     cfg = cfg or {}
     if not results:
         return {
@@ -1213,6 +1704,7 @@ def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
 
     best_click = best.get("ctr_pct") or 0
     worst_click = worst.get("ctr_pct") or 0
+    has_copy_data = bool(title_col or desc_col)
     best_title = best.get("title") or best.get("entity") or "Best notification"
     worst_title = worst.get("title") or worst.get("entity") or "Weak notification"
     best_desc = best.get("description") or ""
@@ -1241,8 +1733,12 @@ def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
             return _vn(r"c\u00e1ch \u0111\u1eb7t c\u00e2u h\u1ecfi gi\u00fap user t\u1ef1 nh\u1eadn di\u1ec7n nhu c\u1ea7u.")
         return _vn(r"message c\u00f2n chung, ch\u01b0a n\u00f3i r\u00f5 user nh\u1eadn g\u00ec, c\u1ea7n l\u00e0m g\u00ec v\u00e0 v\u00ec sao ph\u1ea3i click ngay.")
 
-    best_trigger = classify_trigger(best_title, best_desc, best_promo)
-    worst_trigger = classify_trigger(worst_title, worst.get("description") or "", worst.get("promotion") or "")
+    if has_copy_data:
+        best_trigger = classify_trigger(best_title, best_desc, best_promo)
+        worst_trigger = classify_trigger(worst_title, worst.get("description") or "", worst.get("promotion") or "")
+    else:
+        best_trigger = "no title/description data"
+        worst_trigger = "no title/description data"
     focus_text = " ".join([str(cfg.get("analysis_question", "")), str(cfg.get("qs_objective", "")), str(cfg.get("primary_metric", "")), str(cfg.get("breakdown_dimension", ""))]).lower()
     funnel_focus = any(k in focus_text for k in ["open", "payment", "login", "funnel", "downstream", "conversion", "cvr", "%cr"])
 
@@ -1261,23 +1757,38 @@ def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
         if segment else ""
     )
 
-    if best_click > 0:
+    if best_click > 0 and has_copy_data:
         learning_summary = (
             f"Best notification th\u1eafng \u1edf Click Rate{seg_ctx}: \u2018{best_title[:50]}\u2019 \u0111\u1ea1t {best_click:.3f}%. "
             f"Pattern m\u1ea1nh: {best_trigger} \u2014 {trigger_reason(best_trigger)}{seg_hypothesis}"
         )
+    elif best_click > 0:
+        learning_summary = (
+            f"Best notification th\u1eafng \u1edf Click Rate{seg_ctx}: \u2018{best_title[:50]}\u2019 \u0111\u1ea1t {best_click:.3f}%. "
+            "Ch\u01b0a \u0111\u1ee7 data title/description \u0111\u1ec3 \u0111\u00e1nh gi\u00e1 message/copy quality."
+        )
     else:
         learning_summary = "Ch\u01b0a c\u00f3 notification n\u00e0o t\u1ea1o \u0111\u01b0\u1ee3c click signal r\u00f5 r\u00e0ng trong d\u1eef li\u1ec7u hi\u1ec7n c\u00f3."
 
-    if worst_click <= 0:
+    if worst_click <= 0 and has_copy_data:
         bottleneck_summary = (
             f"Weak: \u2018{worst_title[:50]}\u2019 Click Rate 0.000%. "
             "Title/body ch\u01b0a t\u1ea1o l\u00fd do click: kh\u00f4ng n\u00f3i r\u00f5 user nh\u1eadn g\u00ec, c\u1ea7n l\u00e0m g\u00ec, v\u00e0 t\u1ea1i sao ph\u1ea3i click ngay b\u00e2y gi\u1edd."
         )
-    else:
+    elif worst_click <= 0:
+        bottleneck_summary = (
+            f"Weak: \u2018{worst_title[:50]}\u2019 Click Rate 0.000%. "
+            "Ch\u01b0a c\u00f3 data title/description \u2014 kh\u00f4ng th\u1ec3 k\u1ebft lu\u1eadn nguy\u00ean nh\u00e2n copy. B\u1ed5 sung title/body \u0111\u1ec3 audit."
+        )
+    elif has_copy_data:
         bottleneck_summary = (
             f"Weak: \u2018{worst_title[:50]}\u2019 ch\u1ec9 \u0111\u1ea1t {worst_click:.3f}%. "
             f"Pattern y\u1ebfu ({worst_trigger}): message c\u1ea7n r\u00f5 h\u01a1n v\u1ec1 user nh\u1eadn g\u00ec v\u00e0 h\u00e0nh \u0111\u1ed9ng ti\u1ebfp theo."
+        )
+    else:
+        bottleneck_summary = (
+            f"Weak: \u2018{worst_title[:50]}\u2019 ch\u1ec9 \u0111\u1ea1t {worst_click:.3f}%. "
+            "Ch\u01b0a c\u00f3 data title/description \u0111\u1ec3 x\u00e1c \u0111\u1ecbnh nguy\u00ean nh\u00e2n. B\u1ed5 sung title/body \u0111\u1ec3 ph\u00e2n t\u00edch s\u00e2u h\u01a1n."
         )
 
     # --- Connected story next_step: winner pattern + timing + specific test ---
@@ -1285,7 +1796,22 @@ def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
     hours_str = " / ".join(top3_hours) if top3_hours else None
     winner_hour_str = f"{top_hour['hour']:02d}:00" if top_hour else None
 
-    if best_click > 0 and winner_hour_str:
+    if not has_copy_data:
+        if best_click > 0 and winner_hour_str:
+            next_step_summary = (
+                f"Best notification \u2018{best_title[:35]}\u2019 (Click Rate {best_click:.3f}%) g\u1eedi l\u00fac {winner_hour_str}. "
+                "Ph\u00e2n t\u00edch hi\u1ec7n d\u1ef1a tr\u00ean Click Rate + send time. B\u1ed5 sung title/body v\u00e0o data \u0111\u1ec3 audit copy quality v\u00e0 x\u00e1c \u0111\u1ecbnh driver ch\u00ednh."
+            )
+        elif best_click > 0:
+            next_step_summary = (
+                f"Best notification \u2018{best_title[:35]}\u2019 (Click Rate {best_click:.3f}%). "
+                "B\u1ed5 sung title/description v\u00e0o data \u0111\u1ec3 ph\u00e2n t\u00edch message/copy quality."
+            )
+        else:
+            next_step_summary = (
+                "Ch\u01b0a c\u00f3 click signal r\u00f5 r\u00e0ng. B\u1ed5 sung title/description v\u00e0o data \u0111\u1ec3 audit copy v\u00e0 x\u00e1c \u0111\u1ecbnh nguy\u00ean nh\u00e2n."
+            )
+    elif best_click > 0 and winner_hour_str:
         # Story: winner won because of [trigger] + [timing] \u2192 test to isolate driver
         step1 = _vn(
             r"B\u01af\u1edaC 1 \u2014 Isolate driver: Best notification '{title}' (Click Rate {rate:.3f}%) "
@@ -1356,6 +1882,9 @@ def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
         if not has_open_data or not has_payment_data:
             recommended_data.append(_vn(r"B\u1ea1n c\u00f3 th\u1ec3 b\u1ed5 sung conversion metric nh\u01b0 NPU, MPU, Login, Payment ho\u1eb7c action event c\u1ee7a campaign n\u1ebfu mu\u1ed1n ph\u00e2n t\u00edch s\u00e2u h\u01a1n."))
 
+    if not has_copy_data and "title" not in " ".join(recommended_data).lower():
+        recommended_data.insert(0, "Title/Description (để audit message/copy quality)")
+
     learning_bullets = [{"text": learning_summary, "signal": "info"}]
 
     return {
@@ -1366,9 +1895,9 @@ def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
             "best_entity": best.get("entity", ""), "best_title": best_title, "best_description": best_desc, "best_promotion": best_promo, "best_send_time": best.get("send_time", ""),
             "best_hour": f"{top_hour['hour']:02d}:00" if top_hour else None,
             "best_hour_metrics": {"ctr_pct": top_hour.get("ctr_pct") or 0, "sent": top_hour.get("sent") or 0} if top_hour else None,
-            "worst_entity": worst.get("entity", ""), "title_trigger": best_trigger, "desc_trigger": "description supports click intent" if best_desc else "description missing", "promo_trigger": best_promo,
-            "use_case": best_trigger if best_trigger == _vn(r"use case c\u1ee5 th\u1ec3") else "", "tracking_anomaly": False,
-            "has_open_data": has_open_data, "has_payment_data": has_payment_data, "available_metrics": available_metrics, "missing_metrics": [],
+            "worst_entity": worst.get("entity", ""), "title_trigger": best_trigger if has_copy_data else "no title data", "desc_trigger": ("description supports click intent" if best_desc else "description missing") if has_copy_data else "no description data", "promo_trigger": best_promo,
+            "use_case": (best_trigger if best_trigger == _vn(r"use case c\u1ee5 th\u1ec3") else "") if has_copy_data else "", "tracking_anomaly": False,
+            "has_open_data": has_open_data, "has_payment_data": has_payment_data, "has_copy_data": has_copy_data, "available_metrics": available_metrics, "missing_metrics": [],
             "learning_bullets": learning_bullets, "bottleneck_bullets": [{"text": bottleneck_summary, "signal": "risk"}], "next_step_items": test_items,
             "data_limitation_note": limitation_note,
             "recommended_data": recommended_data,
@@ -1378,7 +1907,7 @@ def _build_notification_key_learning(results, hourly, has_payment, cfg=None):
     }
 
 
-def _build_notification_takeaways(results, hourly, has_payment):
+def _build_notification_takeaways(results, hourly, has_payment, title_col=None, desc_col=None):
     if not results:
         return []
     has_open_data = any(r.get("open_rate_pct") is not None for r in results)
@@ -1388,10 +1917,16 @@ def _build_notification_takeaways(results, hourly, has_payment):
     best_title = best_click.get("title") or best_click.get("entity") or "Best notification"
     best_desc = best_click.get("description") or "N/A"
     weak_title = weak_click.get("title") or weak_click.get("entity") or "Weak notification"
-    takeaways = [
-        {"element": "Title", "signal": _vn(r"Title '{title}' \u0111\u1ea1t Click Rate {rate:.3f}%.").format(title=best_title, rate=(best_click.get('ctr_pct') or 0)), "strength": _vn(r"Title t\u1ed1t nh\u1ea5t \u0111\u1ee7 c\u1ee5 th\u1ec3 \u0111\u1ec3 user hi\u1ec3u l\u00fd do c\u1ea7n click."), "weakness": _vn(r"Pattern y\u1ebfu: '{title}' kh\u00f4ng t\u1ea1o \u0111\u1ee7 click intent n\u1ebfu message generic ho\u1eb7c offer m\u01a1 h\u1ed3.").format(title=weak_title), "insight": _vn(r"Title d\u1ea1ng use case c\u1ee5 th\u1ec3 ho\u1eb7c c\u00e2u h\u1ecfi tr\u1ef1c di\u1ec7n th\u01b0\u1eddng t\u1ed1t h\u01a1n promo generic v\u00ec user t\u1ef1 nh\u1eadn di\u1ec7n \u0111\u01b0\u1ee3c nhu c\u1ea7u ngay."), "action": _vn(r"T\u1ea1o 3 bi\u1ebfn th\u1ec3: use-case-led, benefit-led, urgency-led.")},
-        {"element": "Message Body / Description", "signal": _vn(r"Body c\u1ee7a best notification: {desc}").format(desc=best_desc), "strength": _vn(r"Body t\u1ed1t support title b\u1eb1ng c\u00e1ch l\u00e0m r\u00f5 h\u00e0nh \u0111\u1ed9ng ti\u1ebfp theo."), "weakness": _vn(r"N\u1ebfu body ch\u1ec9 l\u1eb7p l\u1ea1i title, user kh\u00f4ng c\u00f3 th\u00eam l\u00fd do \u0111\u1ec3 click."), "insight": _vn(r"Body n\u00ean n\u1ed1i intent t\u1eeb title sang action: [Use case] + [Benefit] + [Action]."), "action": _vn(r"Rewrite body v\u1edbi m\u1ed9t action c\u1ee5 th\u1ec3 v\u00e0 m\u1ed9t benefit r\u00f5.")},
-    ]
+    has_copy_data = bool(title_col or desc_col)
+    if has_copy_data:
+        takeaways = [
+            {"element": "Title", "signal": _vn(r"Title '{title}' \u0111\u1ea1t Click Rate {rate:.3f}%.").format(title=best_title, rate=(best_click.get('ctr_pct') or 0)), "strength": _vn(r"Title t\u1ed1t nh\u1ea5t \u0111\u1ee7 c\u1ee5 th\u1ec3 \u0111\u1ec3 user hi\u1ec3u l\u00fd do c\u1ea7n click."), "weakness": _vn(r"Pattern y\u1ebfu: '{title}' kh\u00f4ng t\u1ea1o \u0111\u1ee7 click intent n\u1ebfu message generic ho\u1eb7c offer m\u01a1 h\u1ed3.").format(title=weak_title), "insight": _vn(r"Title d\u1ea1ng use case c\u1ee5 th\u1ec3 ho\u1eb7c c\u00e2u h\u1ecfi tr\u1ef1c di\u1ec7n th\u01b0\u1eddng t\u1ed1t h\u01a1n promo generic v\u00ec user t\u1ef1 nh\u1eadn di\u1ec7n \u0111\u01b0\u1ee3c nhu c\u1ea7u ngay."), "action": _vn(r"T\u1ea1o 3 bi\u1ebfn th\u1ec3: use-case-led, benefit-led, urgency-led.")},
+            {"element": "Message Body / Description", "signal": _vn(r"Body c\u1ee7a best notification: {desc}").format(desc=best_desc), "strength": _vn(r"Body t\u1ed1t support title b\u1eb1ng c\u00e1ch l\u00e0m r\u00f5 h\u00e0nh \u0111\u1ed9ng ti\u1ebfp theo."), "weakness": _vn(r"N\u1ebfu body ch\u1ec9 l\u1eb7p l\u1ea1i title, user kh\u00f4ng c\u00f3 th\u00eam l\u00fd do \u0111\u1ec3 click."), "insight": _vn(r"Body n\u00ean n\u1ed1i intent t\u1eeb title sang action: [Use case] + [Benefit] + [Action]."), "action": _vn(r"Rewrite body v\u1edbi m\u1ed9t action c\u1ee5 th\u1ec3 v\u00e0 m\u1ed9t benefit r\u00f5.")},
+        ]
+    else:
+        takeaways = [
+            {"element": "Click Rate", "signal": _vn(r"Best notification \u0111\u1ea1t Click Rate {rate:.3f}%.").format(rate=(best_click.get('ctr_pct') or 0)), "strength": _vn(r"Click Rate cao cho th\u1ea5y notification \u0111\u00e3 t\u1ea1o \u0111\u01b0\u1ee3c intent."), "weakness": _vn(r"Ch\u01b0a c\u00f3 data title/description n\u00ean ch\u01b0a \u0111\u00e1nh gi\u00e1 \u0111\u01b0\u1ee3c copy quality."), "insight": _vn(r"B\u1ed5 sung c\u1ed9t title v\u00e0 description \u0111\u1ec3 agent ph\u00e2n t\u00edch message pattern v\u00e0 click trigger."), "action": _vn(r"Export l\u1ea1i data v\u1edbi c\u1ed9t title v\u00e0 description r\u1ed3i ch\u1ea1y l\u1ea1i.")},
+        ]
     if hourly:
         top = hourly[0]
         takeaways.append({"element": "Send Time / Hour", "signal": _vn(r"{hour:02d}:00 l\u00e0 best timing signal hi\u1ec7n t\u1ea1i v\u1edbi Click Rate {rate:.3f}%.").format(hour=top['hour'], rate=(top.get('ctr_pct') or 0)), "strength": _vn(r"Timing t\u1ed1t gi\u00fap c\u00f9ng m\u1ed9t message d\u1ec5 \u0111\u01b0\u1ee3c x\u1eed l\u00fd h\u01a1n."), "weakness": _vn(r"N\u1ebfu \u0111\u1ed5i c\u1ea3 copy v\u00e0 th\u1eddi gian c\u00f9ng l\u00fac, s\u1ebd kh\u00f4ng bi\u1ebft driver \u0111\u1ebfn t\u1eeb \u0111\u00e2u."), "insight": _vn(r"V\u1edbi bill/payment reminder, \u0111\u1ea7u gi\u1edd chi\u1ec1u c\u00f3 th\u1ec3 l\u00e0 action window h\u1ee3p l\u00fd, nh\u01b0ng c\u1ea7n retest c\u00f3 ki\u1ec3m so\u00e1t."), "action": _vn(r"Test c\u00f9ng title/body \u1edf {h1:02d}:00 / {h2:02d}:00 / {h3:02d}:00.").format(h1=max(top['hour']-1,0), h2=top['hour'], h3=min(top['hour']+1,23))})
@@ -1402,12 +1937,16 @@ def _build_notification_takeaways(results, hourly, has_payment):
     return takeaways
 
 
-def _build_notification_recommendations(results, hourly, has_payment, has_open=False):
+def _build_notification_recommendations(results, hourly, has_payment, has_open=False, title_col=None, desc_col=None):
+    has_copy_data = bool(title_col or desc_col)
     recs = []
     if results:
         best = max(results, key=lambda r: (r.get("ctr_pct") or 0, r.get("sent_rate_pct") or 0))
         best_title = best.get("title") or best.get("entity") or "best notification"
-        recs.append({"priority": _vn(r"Cao"), "learning": _vn(r"Title theo use case c\u1ee5 th\u1ec3 k\u00e9o Click Rate t\u1ed1t h\u01a1n title generic."), "action": _vn(r"T\u1ea1o 3 title m\u1edbi t\u1eeb pattern c\u1ee7a '{title}': use-case-led, benefit-led, urgency-led.").format(title=best_title), "owner": "CRM", "output": "3 notification variants ready for A/B test"})
+        if has_copy_data:
+            recs.append({"priority": _vn(r"Cao"), "learning": _vn(r"Title theo use case c\u1ee5 th\u1ec3 k\u00e9o Click Rate t\u1ed1t h\u01a1n title generic."), "action": _vn(r"T\u1ea1o 3 title m\u1edbi t\u1eeb pattern c\u1ee7a '{title}': use-case-led, benefit-led, urgency-led.").format(title=best_title), "owner": "CRM", "output": "3 notification variants ready for A/B test"})
+        else:
+            recs.append({"priority": _vn(r"Cao"), "learning": _vn(r"Ch\u01b0a c\u00f3 data title/description n\u00ean ch\u01b0a \u0111\u00e1nh gi\u00e1 \u0111\u01b0\u1ee3c copy quality."), "action": _vn(r"B\u1ed5 sung c\u1ed9t title v\u00e0 description v\u00e0o file CSV r\u1ed3i ch\u1ea1y l\u1ea1i \u0111\u1ec3 agent ph\u00e2n t\u00edch message pattern."), "owner": "CRM / Data", "output": "Updated CSV with title/description columns"})
     if hourly:
         top = hourly[0]
         recs.append({"priority": _vn(r"Cao"), "learning": _vn(r"{hour:02d}:00 l\u00e0 best timing signal hi\u1ec7n t\u1ea1i.").format(hour=top['hour']), "action": _vn(r"Test c\u00f9ng title/body \u1edf {h1:02d}:00, {h2:02d}:00, {h3:02d}:00 \u0111\u1ec3 isolate send-time impact.").format(h1=max(top['hour']-1,0), h2=top['hour'], h3=min(top['hour']+1,23)), "owner": "CRM / Lifecycle", "output": "Send-time A/B test result"})
@@ -1468,41 +2007,41 @@ def _build_warnings(cfg, results, columns, has_images, all_channels) -> list:
 
     if not all_channels:
         warnings.append(
-            "ChÆ°a cÃ³ channel/platform nÃªn insight cÃ³ thá»ƒ bá»‹ chung chung. "
-            "Moloco cáº§n Æ°u tiÃªn size/placement; TikTok cáº§n Æ°u tiÃªn hook/video retention; "
-            "Notification cáº§n Æ°u tiÃªn title/open rate."
+            "Chưa có channel/platform nên insight có thể bị chung chung. "
+            "Moloco cần ưu tiên size/placement; TikTok cần ưu tiên hook/video retention; "
+            "Notification cần ưu tiên title/open rate."
         )
 
     if len(all_channels) > 1:
         ch_str = ", ".join(all_channels)
         warnings.append(
-            f"File cÃ³ nhiá»u channel ({ch_str}). Agent tÃ¡ch learning theo tá»«ng channel trÆ°á»›c, "
-            "sau Ä‘Ã³ tá»•ng há»£p cross-channel learning."
+            f"File có nhiều channel ({ch_str}). Agent tách learning theo từng channel trước, "
+            "sau đó tổng hợp cross-channel learning."
         )
 
     if benchmark <= 0:
         warnings.append(
-            "ChÆ°a cÃ³ benchmark/historical reference nÃªn káº¿t luáº­n chá»‰ lÃ  relative "
-            "trong file upload, khÃ´ng pháº£i káº¿t luáº­n absolute."
+            "Chưa có benchmark/historical reference nên kết luận chỉ là relative "
+            "trong file upload, không phải kết luận absolute."
         )
 
     if not has_images:
         warnings.append(
-            "ChÆ°a Ä‘á»§ dá»¯ liá»‡u visual Ä‘á»ƒ káº¿t luáº­n CTA/mÃ u/font/text density. "
-            "HÃ£y upload creative asset hoáº·c báº­t image vision."
+            "Chưa đủ dữ liệu visual để kết luận CTA/màu/font/text density. "
+            "Hãy upload creative asset hoặc bật image vision."
         )
 
     valid = [r for r in results if r["actions"] > 0]
     if len(valid) < 5:
         warnings.append(
-            f"Sample nhá» ({len(valid)} creative cÃ³ conversion). "
-            "Káº¿t luáº­n cáº§n Ä‘Æ°á»£c xÃ¡c nháº­n láº¡i khi cÃ³ thÃªm data."
+            f"Sample nhỏ ({len(valid)} creative có conversion). "
+            "Kết luận cần được xác nhận lại khi có thêm data."
         )
 
     if len(valid) < 3:
         warnings.append(
-            "Cáº¢NH BÃO: Dá»¯ liá»‡u khÃ´ng Ä‘á»§ Ä‘á»ƒ rÃºt káº¿t luáº­n Ä‘Ã¡ng tin cáº­y. "
-            "Chá»‰ cÃ³ " + str(len(valid)) + " creative cÃ³ conversion â€” cáº§n tá»‘i thiá»ƒu 5 Ä‘á»ƒ so sÃ¡nh cÃ³ Ã½ nghÄ©a."
+            "CẢNH BÁO: Dữ liệu không đủ để rút kết luận đáng tin cậy. "
+            "Chỉ có " + str(len(valid)) + " creative có conversion — cần tối thiểu 5 để so sánh có ý nghĩa."
         )
 
     unique_channels = set(r["channel"] for r in valid if r["channel"])
@@ -1510,7 +2049,7 @@ def _build_warnings(cfg, results, columns, has_images, all_channels) -> list:
         ch_items = [r for r in valid if r["channel"] == ch]
         if len(ch_items) < 2:
             warnings.append(
-                f"Channel {ch}: chá»‰ cÃ³ {len(ch_items)} creative â€” khÃ´ng Ä‘á»§ Ä‘á»ƒ káº¿t luáº­n vá» channel-specific pattern."
+                f"Channel {ch}: chỉ có {len(ch_items)} creative — không đủ để kết luận về channel-specific pattern."
             )
 
     unique_os = set(r["os"] for r in valid if r["os"])
@@ -1518,7 +2057,7 @@ def _build_warnings(cfg, results, columns, has_images, all_channels) -> list:
         os_items = [r for r in valid if r["os"] == os_name]
         if len(os_items) < 2:
             warnings.append(
-                f"OS {os_name}: chá»‰ cÃ³ {len(os_items)} creative â€” khÃ´ng Ä‘á»§ Ä‘á»ƒ káº¿t luáº­n OS-specific pattern."
+                f"OS {os_name}: chỉ có {len(os_items)} creative — không đủ để kết luận OS-specific pattern."
             )
 
     return warnings
@@ -1680,7 +2219,7 @@ def _rank_and_decide(results, benchmark, weights=None):
 
 
 def _build_audience_context(cfg):
-    product = cfg.get("product", "App")
+    product = (cfg.get("product") or "App").strip() or "App"
     goal = cfg.get("goal", "ua")
     age_min, age_max = cfg.get("age_min", "18"), cfg.get("age_max", "35")
     location = cfg.get("location", "Vietnam")
@@ -1689,35 +2228,60 @@ def _build_audience_context(cfg):
     goal_label = goal_labels.get(goal, goal)
     context_notes = []
     if goal == "ua":
-        context_notes.append(f"Vá»›i nhÃ³m {age_min}-{age_max} {location} UA, creative cáº§n message Ä‘á»c Ä‘Æ°á»£c ngay trÃªn mobile vÃ  offer pháº£i rÃµ rÃ ng tá»« giÃ¢y Ä‘áº§u.")
+        context_notes.append(f"Với nhóm {age_min}-{age_max} {location} UA, creative cần message đọc được ngay trên mobile và offer phải rõ ràng từ giây đầu.")
     elif goal == "retargeting":
-        context_notes.append("Retargeting audience Ä‘Ã£ biáº¿t sáº£n pháº©m. Æ¯u tiÃªn offer cá»¥ thá»ƒ, reminder hoáº·c feature má»›i.")
+        context_notes.append("Retargeting audience đã biết sản phẩm. Ưu tiên offer cụ thể, reminder hoặc feature mới.")
     elif goal == "other":
         context_notes.append("Other dùng cho lead, qualified lead hoặc event đặc thù. Primary Metric(s) quyết định action skill và post-click factors.")
-    segment_note = f"Segment: {segment}." if segment else f"Segment chÆ°a Ä‘Æ°á»£c nháº­p. Insight Ä‘ang giáº£ Ä‘á»‹nh nhÃ³m {age_min}-{age_max} {location} {goal_label} rá»™ng."
+    segment_note = f"Segment: {segment}." if segment else f"Segment chưa được nhập. Insight đang giả định nhóm {age_min}-{age_max} {location} {goal_label} rộng."
     return {"product": product, "goal": goal_label, "age_range": f"{age_min}-{age_max}", "location": location, "segment": segment or "Not specified", "context_notes": context_notes, "segment_note": segment_note}
 
 
-# â”€â”€ v6: Variance-First Analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── v6: Variance-First Analysis ──────────────────────────────
 
 def _extract_concept_tokens(entity: str) -> str:
-    uc_keywords = {"grab", "billing", "scan", "scanqr", "game", "insurance", "data", "voucher", "discount", "topup", "transfer", "electric", "water"}
-    promo_keywords = {"promo", "nonpromo", "nonpro"}
-    ignore = {"zpi", "aeo", "login", "npu", "android", "ios", "gg", "ua", "tiktok", "one", "fs", "moloco", "mass", "nonpromo", "nonpro", "promo"}
-    tokens = entity.lower().replace("-", " ").replace("_", " ").split()
+    uc_keywords = {
+        "grab", "billing", "bill", "scan", "scanqr", "game", "insurance", "data",
+        "voucher", "discount", "topup", "transfer", "electric", "water", "food",
+        "fastfood", "job", "recruitment", "hiring", "career", "lead", "form",
+            "signup", "register", "payment", "shopping", "shop", "tiktokshop"
+    }
+    promo_keywords = {"offer", "deal", "cashback", "sale"}
+    ignore = {
+        "zpi", "aeo", "login", "npu", "mpu", "android", "ios", "gg", "ua", "srn",
+        "tiktok", "one", "fs", "moloco", "dsp", "mass", "nonpromo", "nonpro",
+        "promo", "img", "image", "ads", "ad", "us", "vn", "eb", "eb1", "eb2",
+        "eb3", "eb4", "eb5", "q1", "q2", "q3", "q4", "kb", "kb1", "kb2", "v",
+        "jpg", "jpeg", "png", "webp", "gif", "mp4", "mov",
+        "static", "banner", "creative", "campaign", "group", "set", "adset",
+        "fb", "meta", "google", "gdn", "asa", "apple", "search",
+        "retargeting", "ret", "sem", "display", "video", "reels", "stories",
+        "auto", "manual", "broad", "narrow", "lookalike", "lal", "custom",
+        "si", "sigroup", "default", "test", "draft", "copy", "new", "old",
+    }
+    tokens = re.split(r"[\s_\-.]+", str(entity or "").lower())
     concept = []
     for t in tokens:
-        if t in ignore or t.isdigit() or (len(t) == 6 and t.isdigit()):
+        t = re.sub(r"[^a-z0-9]", "", t)
+        if not t or t in ignore:
             continue
-        if t in uc_keywords or t in promo_keywords or any(c.isdigit() for c in t):
+        if t.isdigit() or re.fullmatch(r"v?\d+", t) or re.fullmatch(r"\d{2,4}x\d{2,4}", t):
+            continue
+        if re.fullmatch(r"(eb|kb|q|v|s|h)\d+", t) or re.fullmatch(r"\d{4,8}", t):
+            continue
+        if re.fullmatch(r"[a-z]{1,2}\d{1,4}", t) or len(t) <= 2:
+            continue
+        if t in uc_keywords or t in promo_keywords:
             concept.append(t)
-    return " ".join(sorted(concept)) if concept else entity.lower()[:20]
+    return " ".join(sorted(set(concept))) if concept else ""
 
 
 def _detect_concept_groups(results) -> dict:
     groups = {}
     for r in results:
         key = _extract_concept_tokens(r["entity"])
+        if not key:
+            continue
         groups.setdefault(key, []).append(r)
     return {k: v for k, v in groups.items() if len(v) >= 2}
 
@@ -1756,26 +2320,26 @@ def _check_same_concept_variance(concept_groups: dict, ccy: str) -> list:
             "ctr_spread_pp": round(ctr_spread, 2),
             "cvr_spread_pp": round(cvr_spread, 2),
             "cpa_spread_ratio": round(cpa_spread_ratio, 2),
-            "different_dimensions": diff_dims if diff_dims else ["ChÆ°a xÃ¡c Ä‘á»‹nh â€” cáº§n breakdown thÃªm (size, placement, date, audience)"],
+            "different_dimensions": diff_dims if diff_dims else [_vn(r"Ch\u01b0a x\u00e1c \u0111\u1ecbnh - c\u1ea7n breakdown th\u00eam (size, placement, date, audience)")],
             "best": {"entity": best_item["entity"][:40], "ctr": best_item["ctr_pct"], "cvr": best_item["cvr_pct"], "cpa": best_item["cpa_vnd"]},
             "worst": {"entity": worst_item["entity"][:40], "ctr": worst_item["ctr_pct"], "cvr": worst_item["cvr_pct"], "cpa": worst_item["cpa_vnd"]},
         }
 
         if ctr_spread >= 0.5:
             check["warning"] = (
-                f"CÃ¹ng concept \"{concept}\" nhÆ°ng CTR chÃªnh {ctr_spread:.1f}pp. "
-                f"TrÆ°á»›c khi káº¿t luáº­n CTA/hook yáº¿u, hÃ£y kiá»ƒm tra dimension khÃ¡c: "
+                f"Cùng concept \"{concept}\" nhưng CTR chênh {ctr_spread:.1f}pp. "
+                f"Trước khi kết luận CTA/hook yếu, hãy kiểm tra dimension khác: "
                 f"{', '.join(diff_dims) if diff_dims else 'size, placement, date, audience'}."
             )
         if cvr_spread >= 2.0:
             check["warning"] = check.get("warning", "") + (
-                f" CVR chÃªnh {cvr_spread:.1f}pp trong cÃ¹ng concept â€” "
-                "cÃ³ thá»ƒ do post-click flow khÃ¡c nhau theo OS/channel."
+                f" CVR chênh {cvr_spread:.1f}pp trong cùng concept — "
+                "có thể do post-click flow khác nhau theo OS/channel."
             )
         if cpa_spread_ratio >= 2.0:
             check["warning"] = check.get("warning", "") + (
-                f" CPA chÃªnh {cpa_spread_ratio:.1f}x â€” "
-                "delivery dimension (size, placement, campaign type) cÃ³ thá»ƒ lÃ  driver chÃ­nh."
+                f" CPA chênh {cpa_spread_ratio:.1f}x — "
+                "delivery dimension (size, placement, campaign type) có thể là driver chính."
             )
 
         checks.append(check)
@@ -1790,25 +2354,25 @@ def _get_dimension_priority(all_channels: list, columns: list) -> list:
         priorities.append({
             "channel": "Moloco / Programmatic",
             "order": ["Size / Placement", "Offer Visibility", "CTA Visibility", "Text Density", "Mobile Readability", "Concept / Use Case"],
-            "reason": "Moloco lÃ  in-app banner inventory â€” size áº£nh hÆ°á»Ÿng trá»±c tiáº¿p Ä‘áº¿n CTR/CVR. Pháº£i kiá»ƒm tra size trÆ°á»›c khi káº¿t luáº­n concept tháº¯ng/thua.",
+            "reason": "Moloco là in-app banner inventory — size ảnh hưởng trực tiếp đến CTR/CVR. Phải kiểm tra size trước khi kết luận concept thắng/thua.",
         })
     if any(c in ("tiktok",) for c in ch_lower):
         priorities.append({
             "channel": "TikTok",
             "order": ["Hook / First 3s", "Video Pacing", "Sound/Music", "Offer Framing", "CTA", "Concept / Use Case"],
-            "reason": "TikTok lÃ  short-form video feed â€” hook vÃ  3 giÃ¢y Ä‘áº§u quyáº¿t Ä‘á»‹nh CTR. Concept chá»‰ phÃ¡t huy khi hook Ä‘á»§ máº¡nh.",
+            "reason": "TikTok là short-form video feed — hook và 3 giây đầu quyết định CTR. Concept chỉ phát huy khi hook đủ mạnh.",
         })
     if any(c in ("google", "google uac") for c in ch_lower):
         priorities.append({
             "channel": "Google / UAC",
             "order": ["Asset Group / Concept", "Headline", "Description", "Image/Video Quality", "CTA"],
-            "reason": "Google UAC auto-optimizes placement â€” focus vÃ o asset quality vÃ  message clarity.",
+            "reason": "Google UAC auto-optimizes placement — focus vào asset quality và message clarity.",
         })
     if any(c in ("facebook", "meta") for c in ch_lower):
         priorities.append({
             "channel": "Meta / Facebook",
             "order": ["Hook / Thumbnail", "Offer Framing", "Ad Copy", "CTA", "Audience Fit"],
-            "reason": "Meta feed cáº¡nh tranh attention vá»›i organic content â€” hook + offer pháº£i rÃµ rÃ ng.",
+            "reason": "Meta feed cạnh tranh attention với organic content — hook + offer phải rõ ràng.",
         })
 
     has_noti = any("noti" in c or "notification" in c or "push" in c for c in [col.lower() for col in columns])
@@ -1816,25 +2380,25 @@ def _get_dimension_priority(all_channels: list, columns: list) -> list:
         priorities.append({
             "channel": "Notification / Push",
             "order": ["Title", "Open Rate", "Message Body", "Send Time", "Deep Link"],
-            "reason": "Notification phá»¥ thuá»™c title â€” open rate lÃ  KPI Ä‘áº§u tiÃªn cáº§n check.",
+            "reason": "Notification phụ thuộc title — open rate là KPI đầu tiên cần check.",
         })
 
     if not priorities:
         priorities.append({
             "channel": "General",
             "order": ["Delivery Dimension (size, placement, OS)", "Offer / Promotion", "CTA", "Main Message", "Visual Execution"],
-            "reason": "ChÆ°a xÃ¡c Ä‘á»‹nh channel cá»¥ thá»ƒ â€” Æ°u tiÃªn delivery dimension trÆ°á»›c creative element.",
+            "reason": "Chưa xác định channel cụ thể — ưu tiên delivery dimension trước creative element.",
         })
 
     return priorities
 
 
-def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_variance=False, dim_priority=None) -> list:
+def _build_creative_takeaways(results, cfg, all_channels, ccy="đ", has_variance=False, dim_priority=None) -> list:
     valid = [r for r in results if r["actions"] > 0]
     if not valid:
         return []
 
-    product = cfg.get("product", "App")
+    product = (cfg.get("product") or "App").strip() or "App"
     has_moloco = any(ch.lower() in ("moloco", "in-app display", "dsp") for ch in all_channels)
     has_srn = any(ch.lower() in ("tiktok", "meta", "facebook", "google", "google uac") for ch in all_channels)
 
@@ -1860,15 +2424,15 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
             "action": f"Ưu tiên test theo action skill: {tests}.",
         })
 
-    # v6: Variance-aware preamble â€” if same-concept variance detected, flag it BEFORE element analysis
+    # v6: Variance-aware preamble — if same-concept variance detected, flag it BEFORE element analysis
     if has_variance:
         takeaways.append({
-            "element": "Cáº£nh bÃ¡o: Variance trong cÃ¹ng concept",
-            "signal": "PhÃ¡t hiá»‡n creative cÃ¹ng concept/promo nhÆ°ng performance khÃ¡c nhau Ä‘Ã¡ng ká»ƒ. Delivery dimension (OS, size, placement, campaign type) cÃ³ thá»ƒ lÃ  driver chÃ­nh â€” KHÃ”NG nÃªn káº¿t luáº­n CTA/hook yáº¿u trÆ°á»›c khi kiá»ƒm tra.",
-            "strength": "CÃ³ Ä‘á»§ data Ä‘á»ƒ phÃ¢n tÃ­ch variance â€” Ä‘Ã¢y lÃ  cÆ¡ há»™i tÃ¬m Ä‘Ãºng driver thay vÃ¬ Ä‘oÃ¡n.",
-            "weakness": "Náº¿u bá» qua variance check, insight sáº½ sai hÆ°á»›ng: thay Ä‘á»•i creative element trong khi váº¥n Ä‘á» náº±m á»Ÿ delivery.",
-            "insight": "PhÃ¢n tÃ­ch Ä‘Ãºng thá»© tá»±: variance check â†’ delivery dimension â†’ rá»“i má»›i creative element. Xem chi tiáº¿t á»Ÿ má»¥c 'Kiá»ƒm tra Variance cÃ¹ng Concept' bÃªn dÆ°á»›i.",
-            "action": "Xem variance_check Ä‘á»ƒ hiá»ƒu dimension nÃ o gÃ¢y chÃªnh lá»‡ch trÆ°á»›c khi tá»‘i Æ°u creative.",
+            "element": "Cảnh báo: Variance trong cùng concept",
+            "signal": "Phát hiện creative cùng concept/promo nhưng performance khác nhau đáng kể. Delivery dimension (OS, size, placement, campaign type) có thể là driver chính — KHÔNG nên kết luận CTA/hook yếu trước khi kiểm tra.",
+            "strength": "Có đủ data để phân tích variance — đây là cơ hội tìm đúng driver thay vì đoán.",
+            "weakness": "Nếu bỏ qua variance check, insight sẽ sai hướng: thay đổi creative element trong khi vấn đề nằm ở delivery.",
+            "insight": "Phân tích đúng thứ tự: variance check → delivery dimension → rồi mới creative element. Xem chi tiết ở mục 'Kiểm tra Variance cùng Concept' bên dưới.",
+            "action": "Xem variance_check để hiểu dimension nào gây chênh lệch trước khi tối ưu creative.",
         })
 
 
@@ -1882,20 +2446,20 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
         if ratio > 1.2:
             takeaways.append({
                 "element": "Offer / Promotion",
-                "signal": f"Creative cÃ³ promotion signal Ä‘áº¡t Avg CVR {avg_cvr_p:.1f}%, cao hÆ¡n {ratio:.1f}x so vá»›i nhÃ³m non-promo ({avg_cvr_np:.1f}%).",
-                "strength": "Offer cÃ³ kháº£ nÄƒng lá»c Ä‘Ãºng user cÃ³ nhu cáº§u. ÄÃ¢y lÃ  tÃ­n hiá»‡u tá»‘t vá» conversion quality.",
-                "weakness": "Náº¿u CTR váº«n tháº¥p, offer cÃ³ thá»ƒ chÆ°a Ä‘á»§ visible hoáº·c packaging chÆ°a Ä‘á»§ máº¡nh Ä‘á»ƒ thumb-stop.",
-                "insight": f"Vá»›i {product}, Æ°u Ä‘Ã£i cá»¥ thá»ƒ (sá»‘ tiá»n, use case) táº¡o qualified intent tá»‘t hÆ¡n promise chung chung. NhÆ°ng offer cáº§n Ä‘Æ°á»£c Ä‘Ã³ng gÃ³i báº±ng visual máº¡nh Ä‘á»ƒ táº¡o cáº£ click volume.",
-                "action": f"Test 3 offer framing:\n1. \"Táº£i {product} nháº­n 15K\"\n2. \"Thanh toÃ¡n TikTok Shop báº±ng {product} giáº£m 15K\"\n3. \"Má»Ÿ {product} Ä‘á»ƒ nháº­n voucher â€” chá»‰ hÃ´m nay\"",
+                "signal": f"Creative có promotion signal đạt Avg CVR {avg_cvr_p:.1f}%, cao hơn {ratio:.1f}x so với nhóm non-promo ({avg_cvr_np:.1f}%).",
+                "strength": "Offer có khả năng lọc đúng user có nhu cầu. Đây là tín hiệu tốt về conversion quality.",
+                "weakness": "Nếu CTR vẫn thấp, offer có thể chưa đủ visible hoặc packaging chưa đủ mạnh để thumb-stop.",
+                "insight": f"Với {product}, ưu đãi cụ thể (số tiền, use case) tạo qualified intent tốt hơn promise chung chung. Nhưng offer cần được đóng gói bằng visual mạnh để tạo cả click volume.",
+                "action": f"Test 3 offer framing:\n1. \"{product}: nêu rõ lợi ích chính\"\n2. \"Use case cụ thể + action cần làm\"\n3. \"Benefit + điều kiện/urgency nếu có\"",
             })
         else:
             takeaways.append({
                 "element": "Offer / Promotion",
-                "signal": f"CÃ³ promotion trong naming nhÆ°ng CVR chÆ°a tá»‘t hÆ¡n rÃµ rá»‡t (Promo {avg_cvr_p:.1f}% vs Non-promo {avg_cvr_np:.1f}%).",
-                "strength": "Offer Ä‘Ã£ xuáº¥t hiá»‡n trong creative.",
-                "weakness": "Offer chÆ°a Ä‘á»§ specific, visible hoáº·c motivating Ä‘á»ƒ táº¡o conversion gap cÃ³ Ã½ nghÄ©a.",
-                "insight": "Offer tá»“n táº¡i nhÆ°ng execution chÆ°a lÃ m nÃ³ ná»•i báº­t. CÃ³ thá»ƒ do text quÃ¡ nhá», vá»‹ trÃ­ khÃ´ng tá»‘t, hoáº·c framing chÆ°a gáº¯n vá»›i use case cá»¥ thá»ƒ.",
-                "action": f"Test offer vá»›i framing cá»¥ thá»ƒ hÆ¡n: sá»‘ tiá»n + use case + deadline.\nVD: \"Giáº£m 50K khi thanh toÃ¡n Ä‘iá»‡n nÆ°á»›c báº±ng {product}\"",
+                "signal": f"Có promotion trong naming nhưng CVR chưa tốt hơn rõ rệt (Promo {avg_cvr_p:.1f}% vs Non-promo {avg_cvr_np:.1f}%).",
+                "strength": "Offer đã xuất hiện trong creative.",
+                "weakness": "Offer chưa đủ specific, visible hoặc motivating để tạo conversion gap có ý nghĩa.",
+                "insight": "Offer tồn tại nhưng execution chưa làm nó nổi bật. Có thể do text quá nhỏ, vị trí không tốt, hoặc framing chưa gắn với use case cụ thể.",
+                "action": f"Test offer với framing cụ thể hơn: số tiền + use case + deadline.\nVD: \"Giảm 50K khi thanh toán điện nước bằng {product}\"",
             })
 
     # 2. CTA
@@ -1907,10 +2471,10 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
         takeaways.append({
             "element": "CTA",
             "signal": f"CTR spread = {best_ctr_r['ctr_pct']:.1f}% (best) vs {worst_ctr_r['ctr_pct']:.1f}% (worst). Gap = {ctr_gap:.1f}pp.",
-            "strength": "Má»™t sá»‘ CTA/hook Ä‘á»§ táº¡o click, cho tháº¥y cÃ³ room Ä‘á»ƒ tá»‘i Æ°u.",
-            "weakness": f"{'NhÃ³m CTR cao láº¡i cÃ³ CVR tháº¥p â€” CTA chÆ°a qualify rÃµ action sau click.' if high_ctr_low_cvr else 'CTA cá»§a nhÃ³m worst chÆ°a Ä‘á»§ rÃµ rÃ ng hoáº·c chÆ°a gáº¯n vá»›i benefit cá»¥ thá»ƒ.'}",
-            "insight": f"Vá»›i user chÆ°a tá»«ng táº£i {product}, CTA khÃ´ng nÃªn chá»‰ nÃ³i \"Nháº­n ngay\". CTA pháº£i gáº¯n offer vá»›i hÃ nh Ä‘á»™ng cá»¥ thá»ƒ trong app Ä‘á»ƒ qualify intent.",
-            "action": f"Test 3 CTA:\n1. \"Táº£i {product} nháº­n 15K\"\n2. \"Thanh toÃ¡n TikTok Shop báº±ng {product}\"\n3. \"Má»Ÿ {product} Ä‘á»ƒ nháº­n voucher\"",
+            "strength": "Một số CTA/hook đủ tạo click, cho thấy có room để tối ưu.",
+            "weakness": f"{'Nhóm CTR cao lại có CVR thấp — CTA chưa qualify rõ action sau click.' if high_ctr_low_cvr else 'CTA của nhóm worst chưa đủ rõ ràng hoặc chưa gắn với benefit cụ thể.'}",
+            "insight": f"Với user chưa từng tải {product}, CTA không nên chỉ nói \"Nhận ngay\". CTA phải gắn offer với hành động cụ thể trong app để qualify intent.",
+            "action": f"Test 3 CTA:\n1. \"Nhận lợi ích chính\"\n2. \"Bắt đầu với {product}\"\n3. \"Xem chi tiết offer/use case\"",
         })
 
     # 3. Main Message
@@ -1919,14 +2483,14 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
     if high_cvr and low_cvr:
         takeaways.append({
             "element": "Main Message",
-            "signal": f"{len(high_cvr)} creative cÃ³ CVR cao (â‰¥ {median_cvr*1.3:.1f}%) vs {len(low_cvr)} creative CVR tháº¥p (â‰¤ {median_cvr*0.7:.1f}%).",
-            "strength": "NhÃ³m high-CVR cho tháº¥y message cÃ³ thá»ƒ qualify user Ä‘Ãºng cÃ¡ch.",
-            "weakness": "NhÃ³m low-CVR cho tháº¥y message cÃ³ thá»ƒ quÃ¡ rá»™ng hoáº·c promise khÃ´ng align vá»›i post-click experience.",
-            "insight": "Message rÃµ benefit + action cá»¥ thá»ƒ thÆ°á»ng convert tá»‘t hÆ¡n message chung chung. Sá»± chÃªnh lá»‡ch CVR giá»¯a 2 nhÃ³m cho tháº¥y message quality lÃ  má»™t driver tháº­t.",
+            "signal": f"{len(high_cvr)} creative có CVR cao (≥ {median_cvr*1.3:.1f}%) vs {len(low_cvr)} creative CVR thấp (≤ {median_cvr*0.7:.1f}%).",
+            "strength": "Nhóm high-CVR cho thấy message có thể qualify user đúng cách.",
+            "weakness": "Nhóm low-CVR cho thấy message có thể quá rộng hoặc promise không align với post-click experience.",
+            "insight": "Message rõ benefit + action cụ thể thường convert tốt hơn message chung chung. Sự chênh lệch CVR giữa 2 nhóm cho thấy message quality là một driver thật.",
             "action": "Phân tích message/naming của nhóm high-CVR. Lấy pattern (offer cụ thể? use case rõ?) và test 2-3 variant với message structure tương tự nhưng đổi visual/CTA.",
         })
 
-    # 4. Hook / First Frame â€” CHá»ˆ cho SRN, KHÃ”NG cho Moloco static
+    # 4. Hook / First Frame — CHỈ cho SRN, KHÔNG cho Moloco static
     if has_srn:
         iterate_hooks = [r for r in valid if r["pattern"] == "low_ctr_high_cvr" and _is_srn_channel(r["channel"])]
         investigate_funnels = [r for r in valid if r["pattern"] == "high_ctr_low_cvr" and _is_srn_channel(r["channel"])]
@@ -1935,22 +2499,22 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
             avg_cvr = sum(r["cvr_pct"] for r in iterate_hooks) / len(iterate_hooks)
             takeaways.append({
                 "element": "Hook / First Frame",
-                "signal": f"{len(iterate_hooks)} creative (SRN) convert tá»‘t nhÆ°ng thiáº¿u click volume (Avg CTR {avg_ctr:.1f}%, CVR {avg_cvr:.1f}%).",
-                "strength": "Core offer/message cÃ³ giÃ¡ trá»‹ â€” user nÃ o click vÃ o Ä‘á»u cÃ³ intent tá»‘t.",
-                "weakness": "First frame/visual packaging chÆ°a Ä‘á»§ máº¡nh Ä‘á»ƒ dá»«ng scroll vÃ  táº¡o volume trong social feed.",
-                "insight": "ÄÃ¢y lÃ  dáº¡ng \"qualified but not scalable\" â€” creative khÃ´ng nÃªn bá»‹ pause vÃ¬ CVR tá»‘t, nhÆ°ng cÅ©ng khÃ´ng nÃªn scale nguyÃªn báº£n vÃ¬ thiáº¿u attention.",
-                "action": "Giá»¯ message. Rebuild first frame:\n1. Offer-dominant: Æ°u Ä‘Ã£i lá»›n, ná»•i báº­t, contrast cao\n2. Human-context: ngÆ°á»i dÃ¹ng Ä‘ang checkout/nháº­n voucher\n3. Product-screenshot: mÃ n hÃ¬nh app vá»›i offer overlay",
+                "signal": f"{len(iterate_hooks)} creative (SRN) convert tốt nhưng thiếu click volume (Avg CTR {avg_ctr:.1f}%, CVR {avg_cvr:.1f}%).",
+                "strength": "Core offer/message có giá trị — user nào click vào đều có intent tốt.",
+                "weakness": "First frame/visual packaging chưa đủ mạnh để dừng scroll và tạo volume trong social feed.",
+                "insight": "Đây là dạng \"qualified but not scalable\" — creative không nên bị pause vì CVR tốt, nhưng cũng không nên scale nguyên bản vì thiếu attention.",
+                "action": "Giữ message. Rebuild first frame:\n1. Offer-dominant: ưu đãi lớn, nổi bật, contrast cao\n2. Human-context: nguoi dung trong boi canh thuc hien action\n3. Action-context: landing/form/product context với offer/value overlay",
             })
         if investigate_funnels:
             avg_ctr = sum(r["ctr_pct"] for r in investigate_funnels) / len(investigate_funnels)
             avg_cvr = sum(r["cvr_pct"] for r in investigate_funnels) / len(investigate_funnels)
             takeaways.append({
                 "element": "Hook / First Frame",
-                "signal": f"{len(investigate_funnels)} creative (SRN) kÃ©o click nhÆ°ng khÃ´ng convert (Avg CTR {avg_ctr:.1f}%, CVR {avg_cvr:.1f}%).",
-                "strength": "Hook/visual Ä‘á»§ táº¡o attention vÃ  click.",
-                "weakness": "Click khÃ´ng chuyá»ƒn thÃ nh action â€” cÃ³ thá»ƒ lÃ  curiosity click hoáº·c mismatch giá»¯a ad promise vÃ  post-click experience.",
-                "insight": "Vá»›i UA, creative cáº§n vá»«a kÃ©o attention vá»«a qualify Ä‘Ãºng intent install/login/payment. Hook quÃ¡ rá»™ng sáº½ táº¡o traffic khÃ´ng cÃ³ giÃ¡ trá»‹.",
-                "action": "LÃ m promise cá»¥ thá»ƒ hÆ¡n:\n- NÃ³i rÃµ user nháº­n gÃ¬ sau khi táº£i app\n- Äiá»u kiá»‡n gÃ¬ (miá»…n phÃ­? giá»›i háº¡n thá»i gian?)\n- HÃ nh Ä‘á»™ng cá»¥ thá»ƒ gÃ¬ trong app",
+                "signal": f"{len(investigate_funnels)} creative (SRN) kéo click nhưng không convert (Avg CTR {avg_ctr:.1f}%, CVR {avg_cvr:.1f}%).",
+                "strength": "Hook/visual đủ tạo attention và click.",
+                "weakness": "Click không chuyển thành action — có thể là curiosity click hoặc mismatch giữa ad promise và post-click experience.",
+                "insight": "Creative cần vừa kéo attention vừa qualify đúng primary action sau click. Hook quá rộng sẽ tạo traffic không có giá trị.",
+                "action": "Làm promise cụ thể hơn:\n- Nói rõ user nhận gì sau khi tải app\n- Điều kiện gì (miễn phí? giới hạn thời gian?)\n- Hành động cụ thể gì trong app",
             })
 
     # 5. Moloco-specific: Size/Ratio, Offer visibility, CTA visibility, Mobile readability
@@ -1960,29 +2524,29 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
             # Channel context
             takeaways.append({
                 "element": "Channel Fit (Moloco)",
-                "signal": f"PhÃ¡t hiá»‡n {len(moloco_results)} creative trÃªn Moloco â€” programmatic in-app banner inventory.",
-                "strength": "Moloco cho phÃ©p reach lá»›n qua in-app placements Ä‘a dáº¡ng.",
-                "weakness": "KhÃ¡c vá»›i social feed (TikTok/Meta), Moloco creative cáº§n tá»‘i Æ°u cho small placements, fast impression, vÃ  mobile readability. Hook video kiá»ƒu TikTok khÃ´ng phÃ¹ há»£p.",
-                "insight": "VÃ¬ Ä‘Ã¢y lÃ  Moloco / in-app banner inventory, phÃ¢n tÃ­ch cáº§n Æ°u tiÃªn size, placement, mobile readability, offer visibility vÃ  CTA visibility. KhÃ´ng nÃªn dÃ¹ng quÃ¡ nhiá»u video hook logic.",
-                "action": "Æ¯u tiÃªn phÃ¢n tÃ­ch theo: Creative Size â†’ Offer Visibility â†’ CTA Visibility â†’ Text Density â†’ Mobile Readability.",
+                "signal": f"Phát hiện {len(moloco_results)} creative trên Moloco — programmatic in-app banner inventory.",
+                "strength": "Moloco cho phép reach lớn qua in-app placements đa dạng.",
+                "weakness": "Khác với social feed (TikTok/Meta), Moloco creative cần tối ưu cho small placements, fast impression, và mobile readability. Hook video kiểu TikTok không phù hợp.",
+                "insight": "Vì đây là Moloco / in-app banner inventory, phân tích cần ưu tiên size, placement, mobile readability, offer visibility và CTA visibility. Không nên dùng quá nhiều video hook logic.",
+                "action": "Ưu tiên phân tích theo: Creative Size → Offer Visibility → CTA Visibility → Text Density → Mobile Readability.",
             })
             # Size/Ratio
             takeaways.append({
                 "element": "Creative Size / Ratio",
-                "signal": "Moloco yÃªu cáº§u nhiá»u size (320x480, 300x250, 728x90...) cho má»—i placement.",
-                "strength": "Má»™t sá»‘ size cÃ³ thá»ƒ phÃ¹ há»£p inventory hÆ¡n vÃ  táº¡o CTR tá»‘t hÆ¡n.",
-                "weakness": "Náº¿u khÃ´ng tÃ¡ch theo size, agent cÃ³ thá»ƒ káº¿t luáº­n sai ráº±ng concept tháº¯ng/thua, trong khi driver tháº­t lÃ  size/placement.",
-                "insight": "Vá»›i Moloco, size lÃ  má»™t impact dimension quan trá»ng. Cáº§n phÃ¢n tÃ­ch size trÆ°á»›c khi káº¿t luáº­n vá» hook/CTA.",
-                "action": "Breakdown theo size:\n- 320x50 (banner)\n- 320x480 (interstitial)\n- 300x250 (medium rectangle)\n- 728x90 (leaderboard)\nSo sÃ¡nh CTR, CVR, CPA theo tá»«ng size rá»“i má»›i chá»n concept Ä‘á»ƒ nhÃ¢n báº£n.",
+                "signal": "Moloco yêu cầu nhiều size (320x480, 300x250, 728x90...) cho mỗi placement.",
+                "strength": "Một số size có thể phù hợp inventory hơn và tạo CTR tốt hơn.",
+                "weakness": "Nếu không tách theo size, agent có thể kết luận sai rằng concept thắng/thua, trong khi driver thật là size/placement.",
+                "insight": "Với Moloco, size là một impact dimension quan trọng. Cần phân tích size trước khi kết luận về hook/CTA.",
+                "action": "Breakdown theo size:\n- 320x50 (banner)\n- 320x480 (interstitial)\n- 300x250 (medium rectangle)\n- 728x90 (leaderboard)\nSo sánh CTR, CVR, CPA theo từng size rồi mới chọn concept để nhân bản.",
             })
             # Text Density for Moloco
             takeaways.append({
                 "element": "Text Density / Readability",
-                "signal": "Moloco lÃ  in-app banner â€” nhiá»u size nhá» nhÆ° 320x50 hoáº·c 300x250.",
-                "strength": "Banner cÃ³ thá»ƒ truyá»n táº£i offer nhanh náº¿u message Ä‘Æ¡n giáº£n.",
-                "weakness": "Náº¿u quÃ¡ nhiá»u text phá»¥, user khÃ´ng Ä‘á»c ká»‹p trong mobile placement nhá».",
-                "insight": "Vá»›i Moloco, text density áº£nh hÆ°á»Ÿng trá»±c tiáº¿p Ä‘áº¿n CTR vÃ¬ user chá»‰ cÃ³ vÃ i giÃ¢y nhÃ¬n banner.",
-                "action": "Ãp dá»¥ng rule:\n- 1 main message\n- 1 offer chÃ­nh\n- 1 CTA\n- Logo/brand Ä‘á»§ rÃµ\n- Bá» text phá»¥ náº¿u khÃ´ng giÃºp user hiá»ƒu offer nhanh hÆ¡n",
+                "signal": "Moloco là in-app banner — nhiều size nhỏ như 320x50 hoặc 300x250.",
+                "strength": "Banner có thể truyền tải offer nhanh nếu message đơn giản.",
+                "weakness": "Nếu quá nhiều text phụ, user không đọc kịp trong mobile placement nhỏ.",
+                "insight": "Với Moloco, text density ảnh hưởng trực tiếp đến CTR vì user chỉ có vài giây nhìn banner.",
+                "action": "Áp dụng rule:\n- 1 main message\n- 1 offer chính\n- 1 CTA\n- Logo/brand đủ rõ\n- Bỏ text phụ nếu không giúp user hiểu offer nhanh hơn",
             })
 
     # 6. SRN Channel Fit
@@ -1991,11 +2555,11 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
         if "TikTok" in srn_channels or "tiktok" in [c.lower() for c in srn_channels]:
             takeaways.append({
                 "element": "Channel Fit (TikTok)",
-                "signal": "TikTok lÃ  short-form video feed â€” creative cáº§n thumb-stop trong 1-2 giÃ¢y Ä‘áº§u.",
-                "strength": "TikTok cho phÃ©p creative phong phÃº: UGC, sound, motion, storytelling.",
-                "weakness": "Náº¿u creative quÃ¡ giá»‘ng banner hoáº·c khÃ´ng cÃ³ hook máº¡nh, sáº½ bá»‹ skip ngay.",
-                "insight": "Hook/first frame lÃ  yáº¿u tá»‘ quan trá»ng nháº¥t. Creative pháº£i cáº¡nh tranh vá»›i organic content trong feed.",
-                "action": "Test hook styles:\n1. Offer-first: Æ°u Ä‘Ã£i ngay giÃ¢y Ä‘áº§u\n2. Problem-first: pain point rá»“i solution\n3. Testimonial-first: ngÆ°á»i dÃ¹ng tháº­t\n4. Visual-shock: unexpected visual",
+                "signal": "TikTok là short-form video feed — creative cần thumb-stop trong 1-2 giây đầu.",
+                "strength": "TikTok cho phép creative phong phú: UGC, sound, motion, storytelling.",
+                "weakness": "Nếu creative quá giống banner hoặc không có hook mạnh, sẽ bị skip ngay.",
+                "insight": "Hook/first frame là yếu tố quan trọng nhất. Creative phải cạnh tranh với organic content trong feed.",
+                "action": "Test hook styles:\n1. Offer-first: ưu đãi ngay giây đầu\n2. Problem-first: pain point rồi solution\n3. Testimonial-first: người dùng thật\n4. Visual-shock: unexpected visual",
             })
 
     # 7. Use Case Clarity
@@ -2005,11 +2569,11 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
         best_uc = max(uc_entities, key=lambda r: r["cvr_pct"])
         takeaways.append({
             "element": "Use Case Clarity",
-            "signal": f"CÃ³ {len(uc_entities)} creative cÃ³ use case rÃµ trong naming. Best: {best_uc['entity'][:30]} (CVR {best_uc['cvr_pct']:.1f}%).",
-            "strength": "Use case cá»¥ thá»ƒ giÃºp user hÃ¬nh dung giÃ¡ trá»‹ ngay láº­p tá»©c.",
-            "weakness": "Náº¿u use case khÃ´ng phá»• biáº¿n hoáº·c quÃ¡ niched, cÃ³ thá»ƒ giá»›i háº¡n reach.",
-            "insight": f"Creative cÃ³ use case rÃµ thÆ°á»ng convert tá»‘t hÆ¡n creative generic. Má»—i use case nÃªn lÃ  1 creative concept riÃªng.",
-            "action": f"Scale use case tá»‘t nháº¥t vÃ  test thÃªm:\n- Thanh toÃ¡n Ä‘iá»‡n/nÆ°á»›c\n- Náº¡p Ä‘iá»‡n thoáº¡i\n- Chuyá»ƒn tiá»n\n- Mua sáº¯m online\nMá»—i use case = 1 creative concept riÃªng cho {product}.",
+            "signal": f"Có {len(uc_entities)} creative có use case rõ trong naming. Best: {best_uc['entity'][:30]} (CVR {best_uc['cvr_pct']:.1f}%).",
+            "strength": "Use case cụ thể giúp user hình dung giá trị ngay lập tức.",
+            "weakness": "Nếu use case không phổ biến hoặc quá niched, có thể giới hạn reach.",
+            "insight": f"Creative có use case rõ thường convert tốt hơn creative generic. Mỗi use case nên là 1 creative concept riêng.",
+            "action": f"Scale use case tốt nhất và test thêm:\n- Thanh toán điện/nước\n- Nạp điện thoại\n- Chuyển tiền\n- Mua sắm online\nMỗi use case = 1 creative concept riêng cho {product}.",
         })
 
     # 8. Audience Fit
@@ -2019,8 +2583,8 @@ def _build_creative_takeaways(results, cfg, all_channels, ccy="Ä‘", has_varia
         takeaways.append({
             "element": "Audience Fit",
             "signal": f"Target: {segment}, {age_range}, {cfg.get('location', 'Vietnam')}.",
-            "strength": f"CÃ³ segment rÃµ rÃ ng giÃºp creative cÃ³ thá»ƒ personalize messaging.",
-            "weakness": "ChÆ°a kiá»ƒm tra Ä‘Æ°á»£c creative cÃ³ thá»±c sá»± resonate vá»›i segment nÃ y hay khÃ´ng (cáº§n A/B test).",
+            "strength": f"Có segment rõ ràng giúp creative có thể personalize messaging.",
+            "weakness": "Chưa kiểm tra được creative có thực sự resonate với segment này hay không (cần A/B test).",
             "insight": f"Creative cần phù hợp với ngôn ngữ, context và nhu cầu của segment đó. Generic message sẽ không tạo được connection.",
             "action": f"Test creative nói trực tiếp đến {segment}:\n- Dùng scenario của họ\n- Ngôn ngữ của họ\n- Nhu cầu cụ thể của họ với {product}",
         })
@@ -2059,7 +2623,7 @@ def _build_key_learning(takeaways, results, cfg, ccy="đ", variance_check=None, 
     """Build insight-driven learning: connects winning signal → root cause → channel mechanic → actionable hypothesis."""
     import re as _re
     valid = [r for r in results if r["actions"] > 0]
-    product = cfg.get("product", "App")
+    product = (cfg.get("product") or "App").strip() or "App"
     has_variance = bool(variance_check)
 
     if not valid:
@@ -2081,7 +2645,7 @@ def _build_key_learning(takeaways, results, cfg, ccy="đ", variance_check=None, 
     def _offer_hint(entity):
         money = _re.findall(r'(\d+)[Kk]', entity)
         label = f"offer {money[0]}K" if money else ""
-        for sig, lbl in [("TIKTOK","TikTok Shop"),("SHOP","shop"),("GRAB","Grab"),
+        for sig, lbl in [("TIKTOK","use case"),("SHOP","shop"),("GRAB","Grab"),
                           ("BILL","hóa đơn"),("SCAN","QR/scan"),("TRANSFER","chuyển khoản")]:
             if sig in entity.upper():
                 label = (label + " + " + lbl) if label else lbl
@@ -2271,7 +2835,7 @@ def _build_key_learning(takeaways, results, cfg, ccy="đ", variance_check=None, 
 
 def _build_recommendations(results, cfg, all_channels, ccy="đ", has_variance=False, dim_priority=None) -> list:
     recs = []
-    product = cfg.get("product", "App")
+    product = (cfg.get("product") or "App").strip() or "App"
     valid = [r for r in results if r["actions"] > 0]
 
     if has_variance:

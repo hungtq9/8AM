@@ -2,7 +2,7 @@
 
 Claw-a-thon 2026 - Data Analysis Track
 
-AI agent phan tich creative performance tu CSV campaign/export data, tao dashboard insight de Growth/UA team biet creative nao dang thang, vuong o dau, va nen test gi tiep theo.
+AI agent phân tích kết quả creative performance thực tế từ CSV/xlsx (campaign/export data), tạo dashboard insight giúp Growth/UA team biết creative nào win/lost, insight đằng sau là gì và next action là gì.
 
 ## What It Does
 
@@ -22,7 +22,6 @@ Build Agent/
 |-- static/
 |   |-- index.html
 |   |-- Thumbnail.png
-|   `-- Thumbnail-hero.png
 |-- demo/
 |   `-- sample_input.csv
 |-- Dockerfile
@@ -42,7 +41,7 @@ python -m uvicorn app:app --host 127.0.0.1 --port 8000
 Open:
 
 ```text
-http://127.0.0.1:8000/?v=2026-06-16.27
+http://127.0.0.1:8000/?v=2026-06-26.34
 ```
 
 Health check:

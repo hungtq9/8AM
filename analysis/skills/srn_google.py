@@ -21,9 +21,9 @@ def analyze(r: dict, all_results: list) -> dict:
             "finding": f"CVR {cvr:.1f}%. Headline là element có highest weight trong UAC.",
             "signal": "ok" if cvr > 3 else "warn",
             "action": (
-                "Test headline: (1) Offer-first: 'Nhận 15K khi tải Zalopay'; "
-                "(2) Use-case: 'Thanh toán TikTok Shop – Giảm 15K'; "
-                "(3) Problem: 'Không cần tiền mặt – Zalopay'. "
+                "Test headline: (1) Offer-first: 'Nhận offer khi tải app'; "
+                "(2) Use-case: 'Thanh toán use case – Giảm offer'; "
+                "(3) Problem: 'Không cần tiền mặt – app'. "
                 "Mỗi headline ≤30 ký tự, không truncate trên mobile."
             ),
         },

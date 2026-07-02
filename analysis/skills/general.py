@@ -15,7 +15,7 @@ def analyze(r: dict, all_results: list) -> dict:
             "icon": "👆",
             "finding": f"CVR {cvr:.1f}% — CTA cần cụ thể và gắn với offer, không generic.",
             "signal": "ok" if cvr > 5 else "warn",
-            "action": "Test CTA: 'Nhận 15K ngay' vs 'Tải về' — cụ thể luôn tốt hơn generic.",
+            "action": "Test CTA: 'Nhận offer ngay' vs 'Tải về' — cụ thể luôn tốt hơn generic.",
         },
         {
             "dim": "Visual Hierarchy",

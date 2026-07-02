@@ -108,7 +108,7 @@ def _analyze_image_banner(r, all_results, ctr, cvr, size):
             "signal": "ok" if ctr > 0.3 else "warn",
             "action": (
                 "CTA phải: (1) Có màu nền contrast với background; "
-                "(2) Text cụ thể: 'Nhận 15K' không phải 'Tải ngay'; "
+                "(2) Text cụ thể: 'Nhận offer' không phải 'Tải ngay'; "
                 "(3) Min 44px height để tap được trên mobile; "
                 "(4) Đặt gần offer, không tách biệt."
             ),

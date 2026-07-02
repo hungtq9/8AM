@@ -93,6 +93,23 @@ Dùng phân loại này để so sánh hiệu quả TTO vs Freelance khi deep-di
 
 ## 3. METRIC HIERARCHY (UPDATED)
 
+### Bilingual column mapping (VN/EN) — bắt buộc
+
+Detect cột phải **song ngữ + normalize (không phân biệt hoa/thường, có/không dấu)**; nhiều synonym gom về 1 concept:
+
+| Concept | Alias (VN + EN) |
+|---|---|
+| cost | chi phí, chi tiêu, spend, spent, spending, cost, budget |
+| click | lượt nhấp, lượt click, nhấp, click, clicks |
+| impression | hiển thị, lượt hiển thị, impression, impressions, imp |
+| install | cài đặt, lượt cài đặt, install, installs |
+| login | đăng nhập, login, login_success |
+| payment | thanh toán, mua, payment, purchase, first payment |
+| campaign_name | tên chiến dịch, chiến dịch, campaign name |
+| ad_name | tên quảng cáo, quảng cáo, ad name |
+
+Nếu auto-detect vẫn không chắc → **ưu tiên field-mapping thủ công của user** (user map cột nào là cost/click/… thì tính chỉ số theo đúng cột đó, KHÔNG lệ thuộc keyword). File tiếng Việt phải map & tính CTR/CVR/CPA đúng như file tiếng Anh.
+
 ### Primary → Secondary
 
 1. **New Login (`login_success`)** — **PRIMARY KPI**
@@ -426,6 +443,7 @@ summary (sticky) → tiêu đề + pill status
 - Implementation details (cách filter, cách extract, cách config team)
 - Recommendations về Performance team data setup
 - Daily granular tables
+- **Kết luận về 1 element khi KHÔNG có data của element đó** (evidence-bound). Vd: phán message/copy ("generic benefit", "message còn chung") khi file thiếu **title/description**; phán visual khi không có ảnh; phán funnel khi thiếu Open/Payment. → Thay bằng "**không đủ data để đánh giá <element>**" + phân tích cái CÓ thật (vd Click Rate) + gợi ý bổ sung. **Missing data ≠ verdict tiêu cực.**
 
 ### Hard Rules
 
@@ -435,6 +453,24 @@ summary (sticky) → tiêu đề + pill status
 - CP Login as primary efficiency metric
 - Decision Panel với Priority + Risk if delay
 - Data Quality disclaimer cuối
+
+### Win/Why analysis — 3 tầng bằng chứng + product-agnostic
+
+Khi giải thích "creative thắng/thua VÌ SAO", tách rõ 3 tầng, KHÔNG trộn / KHÔNG trình đoán như kết luận:
+1. **Verified (từ số):** action rate, CTR, CPA, spread… — chắc chắn.
+2. **Hypothesis (từ naming/metadata):** use case / scheme / version suy từ TÊN → **ghi rõ "giả thuyết"**, không nói chắc.
+3. **Chưa phân tích được (visual):** màu sắc, font, hook/first-frame, contrast, text density, layout/CTA visibility → **cần image vision**. Khi CHƯA có vision: **KHÔNG** trả lời "win vì màu/font/hook"; phải nói rõ "visual why chưa phân tích được — upload creative + bật image vision để biết".
+
+**Product-agnostic (BẮT BUỘC):** KHÔNG hardcode "Zalopay" / "install·login·payment" / "Tải Zalopay nhận 15K". Lấy product & context từ **Product input + Analysis Brief + data**. Data khác ngành (job/recruitment ads, ecommerce, lead…) → framing theo đúng ngành đó. Không rõ product → nói trung tính ("creative/offer"), tuyệt đối không nhét Zalopay.
+
+**Image vision spec (khi CÓ ảnh creative) — phân tích ĐẦY ĐỦ, đừng sót:**
+- `color_palette` + `contrast_level` (offer/CTA có nổi không)
+- `font/typography` (rõ/dễ đọc, số kiểu chữ — quá nhiều font = rối)
+- `text_coverage_pct` (%text trên ảnh — OCR/vision ước lượng; vd Meta 20% rule)
+- `cta` (có/không · là button rõ? · contrast · size đủ tap trên mobile)
+- `hook`/first-frame (video) hoặc focal point (image): có thumb-stop không
+- `visual_hierarchy` (eye path Offer → CTA → Brand; có element thừa không) + `offer_visibility` (ưu đãi dominant + readable ở thumb-size)
+→ Gắn từng yếu tố với performance + **so nhóm high vs low performer** để trả lời "win/lost vì yếu tố visual nào" (vd "best-CPA: offer dominant + contrast cao + %text ~18% + 1 CTA button rõ; worst: %text ~45%, CTA chìm, 2 font cạnh tranh"). Đây là điều kiện để output đạt yêu cầu phân tích visual thật (không chỉ checklist).
 
 ---
 

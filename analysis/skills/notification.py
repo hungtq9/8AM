@@ -27,7 +27,7 @@ def _analyze_push(r, all_results, ctr, cvr):
             "signal": "warn" if ctr < 5 else "ok",
             "action": (
                 "Title ≤50 ký tự (không bị truncate trên lock screen). "
-                "Test 3 angle: (1) Offer-first: 'Nhận 15K ngay hôm nay'; "
+                "Test 3 angle: (1) Offer-first: 'Nhận offer ngay hôm nay'; "
                 "(2) Urgency: 'Còn 2 giờ — voucher của bạn sắp hết'; "
                 "(3) Personalized: '[Tên], ưu đãi dành riêng cho bạn'."
             ),
@@ -42,8 +42,8 @@ def _analyze_push(r, all_results, ctr, cvr):
             "signal": "ok" if cvr > 3 else "warn",
             "action": (
                 "Body ≤100 ký tự. Nêu cụ thể: số tiền, use case, điều kiện đơn giản. "
-                "VD: 'Thanh toán TikTok Shop bằng Zalopay — áp dụng đến 23:59 hôm nay'. "
-                "Tránh: 'Khám phá ưu đãi hấp dẫn tại Zalopay'."
+                "VD: 'Thanh toán use case bằng app — áp dụng đến 23:59 hôm nay'. "
+                "Tránh: 'Khám phá ưu đãi hấp dẫn tại app'."
             ),
         },
         {

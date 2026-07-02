@@ -44,7 +44,7 @@ TTO vs Freelance (TikTok):
         ])
         moloco_section = f"\nMoloco creative clusters:\n{moloco_rows}"
 
-    prompt = f"""Bạn là Senior UA Performance Analyst của Zalopay.
+    prompt = f"""Bạn là Senior UA Performance Analyst của app.
 Hãy viết creative performance insight report theo cấu trúc sau, bằng tiếng Việt (giữ nguyên technical terms tiếng Anh):
 
 {context}

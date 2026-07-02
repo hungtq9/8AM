@@ -11,8 +11,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .hdr{background:#fff;border-bottom:1px solid var(--g200);padding:14px 24px;display:flex;align-items:center;gap:10px}
 .hdr h1{font-size:17px;font-weight:600}.hdr .badge{font-size:11px;background:var(--pri-l);color:var(--pri);padding:2px 8px;border-radius:99px;font-weight:500}
 .hero-wrap{max-width:1440px;margin:0 auto;padding:14px 24px 0}
-.hero-banner{position:relative;display:grid;grid-template-columns:minmax(470px,64%) 1fr;align-items:stretch;min-height:220px;background:#071426;border:1px solid #0f2540;border-radius:14px;overflow:hidden;box-shadow:var(--sh)}
-.hero-banner:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#071426 0%,#071426 63%,rgba(7,20,38,.88) 69%,rgba(7,20,38,.24) 78%,rgba(7,20,38,0) 88%);z-index:1;pointer-events:none}
+.hero-banner{position:relative;display:grid;grid-template-columns:minmax(470px,58%) 1fr;align-items:center;min-height:220px;background:#071426;border:1px solid #0f2540;border-radius:14px;overflow:hidden;box-shadow:var(--sh)}
+.hero-banner:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 72% 20%,rgba(37,99,235,.18),transparent 34%);z-index:1;pointer-events:none}
 .hero-text{position:relative;z-index:2;padding:20px 24px;display:flex;flex-direction:column;justify-content:center;min-width:0}
 .hero-kicker{font-size:11px;font-weight:700;color:#7dd3fc;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
 .hero-title{font-size:28px;font-weight:800;line-height:1.15;margin:0 0 8px;color:#fff}
@@ -21,10 +21,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .hero-modes{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .hero-label{font-size:12px;color:#bfdbfe;font-weight:600}
 .hero-chip{font-size:12px;font-weight:700;color:#e0f2fe;background:rgba(37,99,235,.28);border:1px solid rgba(147,197,253,.55);border-radius:99px;padding:2px 10px}
-.hero-flow{font-size:12.5px;color:#f8fafc;white-space:nowrap}
+.hero-flow{display:none}
 .hero-team{font-size:11px;color:#bfdbfe;margin-top:9px;line-height:1.45;font-style:italic;max-width:none;white-space:nowrap}
 .hero-team strong{color:#fff;font-style:normal}
-.hero-img{position:absolute;right:0;top:0;width:38%;height:100%;object-fit:cover;object-position:right center;transform:translateX(24%);z-index:0;filter:saturate(1.08) contrast(1.04)}
+.hero-brand{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.hero-brand img{width:100%;height:100%;object-fit:cover;object-position:center;border-radius:0 13px 13px 0;display:block}
 .ctr{max-width:1440px;margin:0 auto;padding:20px 24px}
 .setup-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start}
 .setup-grid>#step1{grid-column:span 5;grid-row:1}
@@ -217,6 +218,8 @@ td{padding:6px 10px;border-bottom:1px solid var(--g100)}
 .chgrp label{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid var(--g200);border-radius:6px;cursor:pointer;font-size:12px;font-weight:400;background:#fff;transition:.15s}
 .chgrp label:hover{border-color:var(--pri)}
 .chgrp label:has(input:checked){border-color:var(--pri);background:var(--pri-l)}
+.channel-warn{display:none;margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--err-l);color:#991b1b;font-size:12px;line-height:1.45}
+.channel-warn.show{display:block}
 .adv-toggle{font-size:12px;color:var(--pri);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block}
 .sec-head{font-size:15px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px}
 .insight-block{font-size:13px;margin-top:6px;padding:8px 10px;border-radius:6px;line-height:1.6}
@@ -258,12 +261,11 @@ td{padding:6px 10px;border-bottom:1px solid var(--g100)}
   .ctr{padding:14px}
   .hero-wrap{padding:12px 14px 0}
   .hero-banner{display:flex;flex-direction:column;min-height:0}
-  .hero-banner:before{background:linear-gradient(180deg,#071426 0%,rgba(7,20,38,.96) 45%,rgba(7,20,38,.45) 72%,rgba(7,20,38,0) 100%)}
   .hero-text{padding:18px}
   .hero-title{font-size:24px}
-  .hero-flow{white-space:normal}
   .hero-team{white-space:normal}
-  .hero-img{position:relative;width:100%;height:auto;max-height:280px}
+  .hero-brand{max-height:180px}
+  .hero-brand img{border-radius:0 0 13px 13px}
   .card{padding:14px;margin-bottom:14px}
   .setup-grid,.result-grid{display:block}
   .fr{flex-direction:column;gap:8px}
@@ -282,8 +284,8 @@ td{padding:6px 10px;border-bottom:1px solid var(--g100)}
 </style>
 </head>
 <body>
-<div class="hdr"><h1>Creative Performance Insight Agent</h1><span class="badge">v4 · Impact Analytics</span><span class="badge" id="build-badge" title="UI build 2026-06-16.27">build 2026-06-16.27</span></div>
-<script>fetch('/health').then(r=>r.json()).then(d=>{var b=document.getElementById('build-badge');if(b){b.textContent='build '+(d.build||'?');b.title='UI build 2026-06-16.27 · server build '+(d.build||'?')+(d.build==='2026-06-16.27'?' ✓':' ⚠ mismatch — restart uvicorn');}}).catch(()=>{});</script>
+<div class="hdr"><h1>Creative Performance Insight Agent</h1><span class="badge">v4 · Impact Analytics</span><span class="badge" id="build-badge" title="UI build 2026-06-26.34">build 2026-06-26.34</span></div>
+<script>fetch('/health').then(r=>r.json()).then(d=>{var b=document.getElementById('build-badge');if(b){b.textContent='build '+(d.build||'?');b.title='UI build 2026-06-26.34 · server build '+(d.build||'?')+(d.build==='2026-06-26.34'?' ✓':' ⚠ mismatch — restart uvicorn');}}).catch(()=>{});</script>
 <div class="hero-wrap">
 <section class="hero-banner">
   <div class="hero-text">
@@ -294,7 +296,9 @@ td{padding:6px 10px;border-bottom:1px solid var(--g100)}
     <div class="hero-flow">Upload CSV → Agent phân tích → <b>Key Learning</b> · <b>Bottleneck</b> · <b>Next Step</b></div>
     <div class="hero-team"><strong>Created by 8AM team.</strong> "8AM là thời gian bắt đầu tốt nhất cho một câu lệnh; sau 5h, token reset đúng lúc bắt đầu ca chiều lúc 01:00 PM."</div>
   </div>
-  <img class="hero-img" src="/static/Thumbnail-hero.png" alt="Agent banner">
+  <div class="hero-brand">
+    <img src="/static/Thumbnail.png" alt="8AM Creative Performance Insight Agent">
+  </div>
 </section>
 </div>
 
@@ -303,7 +307,7 @@ td{padding:6px 10px;border-bottom:1px solid var(--g100)}
 <!-- STEP 1 -->
 <div class="card" id="step1">
   <h2><span style="width:24px;height:24px;background:var(--pri);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">1</span> Target Audience & Channel</h2>
-  <div class="fr"><div><label>Product / App</label><input type="text" id="product" value="Zalopay"></div><div><label>Goal</label><select id="goal"><option value="ua">User Acquisition (UA)</option><option value="retargeting">Retargeting</option><option value="other">Other</option></select></div></div>
+  <div class="fr"><div><label>Product / App</label><input type="text" id="product" value="" placeholder="e.g. App, brand, campaign"></div><div><label>Goal</label><select id="goal"><option value="ua">User Acquisition (UA)</option><option value="retargeting">Retargeting</option><option value="other">Other</option></select></div></div>
   <div class="fr"><div><label>Age Range</label><div style="display:flex;gap:6px;align-items:center"><input type="number" id="age-min" value="18" style="width:70px"><span>—</span><input type="number" id="age-max" value="35" style="width:70px"></div></div><div><label>Location</label><input type="text" id="location" value="Vietnam"></div><div><label>Segment</label><input type="text" id="segment" placeholder="e.g. student, deal seeker..."></div></div>
   <hr class="hr">
   <label>Channel / Platform <span style="font-weight:400;color:var(--g400)">(chọn tất cả channel có trong file)</span></label>
@@ -312,6 +316,7 @@ td{padding:6px 10px;border-bottom:1px solid var(--g100)}
     <div class="chgrp"><div class="chg-title">B. Programmatic / In-app Banner</div><div class="chg-items"><label><input type="checkbox" name="ch" value="DSP"><span>DSP / Programmatic</span></label><label><input type="checkbox" name="ch" value="Other Network"><span>Other Network</span></label></div></div>
     <div class="chgrp"><div class="chg-title">C. Owned / Lifecycle</div><div class="chg-items"><label><input type="checkbox" name="ch" value="Push Notification"><span>Push Notification</span></label><label><input type="checkbox" name="ch" value="Message"><span>Message</span></label><label><input type="checkbox" name="ch" value="Email"><span>Email</span></label></div></div>
   </div>
+  <div id="channel-warn" class="channel-warn">Vui lòng chọn ít nhất 1 channel (A. SRN/Paid Social · B. Programmatic/In-app · C. Owned/Lifecycle) để phân tích.</div>
 </div>
 
 <!-- STEP 2 -->
@@ -374,7 +379,7 @@ td{padding:6px 10px;border-bottom:1px solid var(--g100)}
 <!-- STEP 3 -->
 <div class="card" id="step3">
   <h2><span style="width:24px;height:24px;background:var(--pri);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">3</span> Creative Assets <span style="font-size:12px;color:var(--g400);margin-left:auto;font-weight:400">Optional — enables visual analysis</span></h2>
-  <label class="upload" id="img-dz" for="img-in"><input type="file" id="img-in" accept="image/png,image/jpeg,image/webp" multiple onchange="handleCreativeFiles(this.files);this.value=''"><div class="dz-inner"><div class="icon">🖼️</div><div><strong>Drop images here</strong></div><div class="hint">PNG, JPG, WebP</div></div></label>
+  <label class="upload" id="img-dz" for="img-in"><input type="file" id="img-in" accept="image/png,image/jpeg,image/webp" multiple onchange="handleCreativeFiles(this.files);this.value=''"><div class="dz-inner"><div class="icon">🖼️</div><div><strong>Drop images here</strong></div><div class="hint">PNG, JPG, WebP</div></div></label>
   <div id="img-pv" class="ig"></div>
 </div>
 
@@ -442,6 +447,46 @@ function fixText(s){
     return /[ÃÂâ]/.test(out)?s:out;
   }catch{return s}
 }
+fixText=(function(){
+  const cp={'€':0x80,'‚':0x82,'ƒ':0x83,'„':0x84,'…':0x85,'†':0x86,'‡':0x87,'ˆ':0x88,'‰':0x89,'Š':0x8a,'‹':0x8b,'Œ':0x8c,'Ž':0x8e,'‘':0x91,'’':0x92,'“':0x93,'”':0x94,'•':0x95,'–':0x96,'—':0x97,'˜':0x98,'™':0x99,'š':0x9a,'›':0x9b,'œ':0x9c,'ž':0x9e,'Ÿ':0x9f};
+  const bad=x=>/[ÃÂâðÄÆẻ]/.test(String(x||''));
+  const once=x=>{
+    try{
+      const bytes=[];
+      for(const ch of String(x??'')){
+        const code=ch.charCodeAt(0);
+        if(code<=255)bytes.push(code);
+        else if(cp[ch])bytes.push(cp[ch]);
+        else return String(x??'');
+      }
+      return new TextDecoder('utf-8',{fatal:true}).decode(new Uint8Array(bytes));
+    }catch{return String(x??'')}
+  };
+  return function(s){
+    let out=String(s??'');
+    for(let i=0;i<3&&bad(out);i++){
+      const next=once(out);
+      if(next===out)break;
+      out=next;
+    }
+    return out;
+  };
+})();
+function decodeStaticCopy(){
+  const skip=new Set(['SCRIPT','STYLE','NOSCRIPT']);
+  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{
+    acceptNode:n=>skip.has(n.parentElement?.tagName)?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT
+  });
+  const nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(n=>{const v=fixText(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v});
+  document.querySelectorAll('[placeholder],[title],input[value]').forEach(el=>{
+    ['placeholder','title','value'].forEach(a=>{
+      if(el.hasAttribute?.(a)){const old=el.getAttribute(a), v=fixText(old); if(v!==old)el.setAttribute(a,v)}
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded',decodeStaticCopy);
 function esc(s){return fixText(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function findImg(entity){
   const imgs=[...(window.uploadedImages||[]),...(typeof uploadedImages!=='undefined'?uploadedImages:[])];
@@ -573,13 +618,22 @@ function validateWeights(){
   const warn=$('w-warn');
   if(warn){warn.classList.toggle('hidden',ok);warn.textContent=ok?'':`Total weight = ${total}%. Must be 100%.`}
   const btn=document.getElementById('go-btn');
-  if(btn&&csvFile)btn.disabled=!ok;
+  if(btn&&csvFile)btn.disabled=!ok||!getSelectedChannels().length;
   return ok;
 }
 
 applyPreset($('qs-obj').value);
 
 function getSelectedChannels(){return Array.from(document.querySelectorAll('input[name="ch"]:checked')).map(cb=>cb.value)}
+function updateAnalyzeAvailability(showWarning=false){
+  const hasChannel=getSelectedChannels().length>0;
+  const warn=$('channel-warn');
+  if(warn)warn.classList.toggle('show',showWarning&&!hasChannel);
+  const btn=$('go-btn');
+  if(btn)btn.disabled=!(csvFile&&validateWeights(false)&&hasChannel);
+  return hasChannel;
+}
+document.querySelectorAll('input[name="ch"]').forEach(cb=>cb.addEventListener('change',()=>updateAnalyzeAvailability(true)));
 
 function autoSuggestSM(){
   const pm=($('pm').value||'').toLowerCase();
@@ -686,7 +740,7 @@ function showCSVPV(){
   }
   autoSuggestSM();
   updateScoringForMode();
-  $('go-btn').disabled=!validateWeights();$('s2n').style.background='var(--ok)';
+  validateWeights();updateAnalyzeAvailability(false);$('s2n').style.background='var(--ok)';
   if(autoBd)parseNaming(autoBd);
 }
 
@@ -699,7 +753,7 @@ function pickBreakdownColumn(columns){
 
 function isPrimaryMetricCandidate(col){
   const c=String(col||'').toLowerCase();
-  return !(/ecpa|e_cpa|\bcpa\b|\bcpi\b|cost|spend|\brate\b|%|%cr|\bctr\b|\bcvr\b|roas|revenue|arpu/.test(c));
+  return !(/ecpa|e_cpa|\bcpa\b|\bcpi\b|cost|spend|chi phí|chi tiêu|budget|\brate\b|%|%cr|\bctr\b|\bcvr\b|roas|revenue|arpu|hiển thị|impression|lượt nhấp|lượt click|click/.test(c));
 }
 
 function onBdChange(){const v=$('bd').value;if(v&&csvData)parseNaming(v);else $('np-area').classList.add('hidden')}
@@ -778,6 +832,7 @@ function getSelectedSM(){return Array.from(document.querySelectorAll('#sm-area i
 
 async function runAnalysis(){
   if(!csvFile||!validateWeights())return;
+  if(!updateAnalyzeAvailability(true)){const chBlock=document.querySelector('.chgrp');if(chBlock)chBlock.scrollIntoView({behavior:'smooth',block:'center'});return}
   $('lo').classList.remove('hidden');$('lo-t').textContent='Đang phân tích...';
   try{
     const fd=new FormData;fd.append('file',csvFile);const w=objectiveWeights();
@@ -1390,11 +1445,20 @@ function notificationBadges(m){
 }
 
 function notificationTriggerType(m){
+  if(!hasNotificationCopyData())return 'no title/description data';
   const txt=`${m.title||''} ${m.description||''} ${m.promotion||''}`.toLowerCase();
   if(/\d+\s?k|%|voucher|cashback|giảm|ưu đãi|hoàn tiền/.test(txt))return 'promotion / offer';
   if(/hôm nay|ngay|sắp|deadline|đến hạn|limited|cuối/.test(txt))return 'urgency';
   if(/học phí|tiktok|shop|thanh toán|nạp|bill|qr|điện|nước/.test(txt))return 'use case';
   return 'generic benefit';
+}
+function hasNotificationCopyData(){
+  const nf=lastResult&&lastResult.notification_fields;
+  if(nf)return Boolean(nf.title||nf.description);
+  return false;
+}
+function notificationNoCopyMsg(){
+  return 'Chưa đủ data title/description để đánh giá message/copy. Phân tích hiện dựa trên Click Rate (+ send time nếu có); bổ sung title/body để audit copy.';
 }
 
 function getNotificationBestInsight(m){
@@ -1402,7 +1466,17 @@ function getNotificationBestInsight(m){
   const ma=lastResult.metric_availability||{};
   const hasPayment=ma.payment!==false;
   const hasOpen=ma.open!==false;
-  return {
+  if(!hasNotificationCopyData()){
+    return {
+      trigger:notificationNoCopyMsg(),
+      strength:'Có click signal trong dữ liệu hiện có; chỉ nên đọc theo Click Rate và send time nếu có.',
+      weakness:hasPayment?'Có thể đọc downstream action nếu cột Payment/Login được map, nhưng chưa đủ data để kết luận copy.':'Payment/Login data not available — chưa thể đánh giá downstream quality.',
+      insight:'Dataset thiếu title/description nên không thể kết luận trigger copy. Winning hiện chỉ chứng minh creative/message id này có Click Rate tốt hơn peer set.',
+      replicate:'Giữ lại winner làm benchmark theo metric hiện có; chưa replicate copy cho tới khi có title/body.',
+      nextTest:'Bổ sung title/body hoặc message text, sau đó chạy lại để audit copy; nếu chưa có, test theo send time và Click Rate trước.'
+    };
+  }
+  const base={
     trigger:`Trigger chính: ${trigger}. ${hasOpen?'Có thể đọc thêm Open Rate nếu đã map đúng cột Open.':'Open data not available — chưa thể đánh giá title performance bằng Open Rate.'}`,
     strength:hasPayment?'Có tín hiệu tốt ở click hoặc click-to-payment; message đủ rõ để kéo user vào bước tiếp theo.':'Có click signal trong dữ liệu hiện có; message đủ tạo phản hồi ở bước click.',
     weakness:hasPayment?((m.cvr_pct||0)>0?'Vẫn cần test xem title hay send time là driver chính, tránh scale chỉ dựa vào một lần gửi.':'Payment Rate = 0.000% dù Payment/Login column tồn tại; cần kiểm tra conversion path.'):'Payment data not available — chưa thể đánh giá downstream payment quality.',
@@ -1410,23 +1484,49 @@ function getNotificationBestInsight(m){
     replicate:'Giữ cấu trúc: benefit cụ thể + use case/action + promotion nếu có.',
     nextTest:hasPayment?'Test cùng message ở 2-3 khung giờ top, sau đó test title có/không promotion để isolate trigger.':'Bổ sung Open và Payment/Login event, sau đó phân tích lại funnel Sent → Open → Click → Login/Payment.'
   };
+  const cw=lastResult&&lastResult.copy_why;
+  if(cw){
+    if(cw.trigger)base.trigger=cw.trigger;
+    const ins=[cw.why_best_wins,cw.win_driver?('Win driver: '+cw.win_driver):'',cw.audience_fit].filter(Boolean).join(' ');
+    if(ins)base.insight=ins;
+    if(cw.replicate)base.replicate=cw.replicate;
+    if(cw.next_test)base.nextTest=cw.next_test;
+  }
+  return base;
 }
 
 function getNotificationWeakInsight(m){
+  if(!hasNotificationCopyData()){
+    return {
+      trigger:notificationNoCopyMsg(),
+      strength:'Vẫn có thể học từ %Sent, Click Rate và send time nếu có.',
+      weakness:'Chưa đủ data title/description để xác định nguyên nhân copy yếu.',
+      insight:'Không nên rewrite title/body khi file không có nội dung title/body. Cần bổ sung copy data trước khi kết luận message chung hay CTA thiếu rõ.',
+      replicate:'Không kết luận Avoid về copy; trước mắt chỉ flag asset/message id có Click Rate thấp.',
+      rewrites:[]
+    };
+  }
   const noPromo=!m.promotion||m.promotion==='No explicit promotion detected';
   const title=m.title||'Notification title';
+  const product=($('product')&&$('product').value.trim())||'app';
   const ma=lastResult.metric_availability||{};
   const hasPayment=ma.payment!==false;
+  const cw=lastResult&&lastResult.copy_why;
+  const weakOverride=cw?{
+    weakness:cw.why_worst_loses||undefined,
+    insight:cw.why_worst_loses||undefined,
+    replicate:cw.avoid||undefined
+  }:{};
   return {
     trigger:`Missing trigger: ${noPromo?'promotion cụ thể':'CTA/action rõ ràng'}; title chưa cho user đủ lý do mở hoặc click.`,
     strength:ma.open!==false?'Có thể vẫn học được về timing/delivery nếu %Sent hoặc Open Rate bất thường.':'Có thể vẫn học được theo %Sent và Click Rate; chưa thể đánh giá title bằng Open Rate.',
-    weakness:'Title/description đang quá generic hoặc nêu pain point nhưng chưa nói rõ user nhận gì ngay lập tức.',
-    insight:hasPayment?'Nếu title chỉ nói vấn đề mà không có offer/action cụ thể, user không có động lực mở notification. Cần rewrite theo benefit + action.':'Nếu title chỉ nói vấn đề mà không có offer/action cụ thể, user có thể không click. Hiện chưa có Payment/Login data nên không kết luận conversion quality.',
-    replicate:'Tránh title chung chung, tránh pain point không gắn với reward hoặc hành động cụ thể.',
+    weakness:weakOverride.weakness||'Title/description đang quá generic hoặc nêu pain point nhưng chưa nói rõ user nhận gì ngay lập tức.',
+    insight:weakOverride.insight||(hasPayment?'Nếu title chỉ nói vấn đề mà không có offer/action cụ thể, user không có động lực mở notification. Cần rewrite theo benefit + action.':'Nếu title chỉ nói vấn đề mà không có offer/action cụ thể, user có thể không click. Hiện chưa có Payment/Login data nên không kết luận conversion quality.'),
+    replicate:weakOverride.replicate||'Tránh title chung chung, tránh pain point không gắn với reward hoặc hành động cụ thể.',
     rewrites:[
-      title.toLowerCase().includes('học')?'Đóng học phí trước, trả sau cùng ZaloPay':'Mở ZaloPay để nhận ưu đãi hôm nay',
-      title.toLowerCase().includes('học')?'Giảm áp lực học phí, mở ZaloPay xem ưu đãi':'Nhận ưu đãi ngay khi thanh toán bằng ZaloPay',
-      title.toLowerCase().includes('học')?'Học phí đến hạn? Thanh toán linh hoạt ngay':'Ưu đãi sắp hết hạn, mở ZaloPay để kiểm tra'
+      title.toLowerCase().includes('học')?'Đóng học phí đúng hạn với ưu đãi phù hợp':`Mở ${product} để xem ưu đãi hôm nay`,
+      title.toLowerCase().includes('học')?`Giảm áp lực học phí, mở ${product} xem ưu đãi`:`Nhận ưu đãi khi thực hiện action trong ${product}`,
+      title.toLowerCase().includes('học')?'Học phí đến hạn? Kiểm tra ưu đãi phù hợp ngay':`Ưu đãi sắp hết hạn, mở ${product} để kiểm tra`
     ]
   };
 }
@@ -1441,7 +1541,7 @@ function creativeProofParts(m){
   const version=(entity.match(/(?:^|_)V(\d+)(?:_|\.|$)/i)||[])[1];
   const lower=entity.toLowerCase();
   let useCase='';
-  if(lower.includes('tiktokshop')||lower.includes('tiktok_shop')||lower.includes('tiktok shop'))useCase='TikTok Shop';
+  if(lower.includes('tiktokshop')||lower.includes('tiktok_shop')||lower.includes('tiktok shop'))useCase='use case';
   else if(lower.includes('grab'))useCase='Grab';
   else if(lower.includes('scan')||lower.includes('qr'))useCase='Scan QR';
   else if(lower.includes('bill'))useCase='Bill payment';
@@ -1476,14 +1576,15 @@ function renderCreativeComparison(best,worst){
   const insW=getWorstInsight(worst);
   const bestProof=creativeProofParts(best);
   const worstProof=creativeProofParts(worst);
+  const ci=lastResult.creative_insights||{};
   const mode=(getSelectedChannels()[0]||best.channel||'Creative').replace('Moloco / Programmatic','In-app Display');
   const rLabel=rateMetricLabel(), cLabel=costMetricLabel(), formula=primaryFormula();
   const evidenceBest=`CTR ${(best.ctr_pct||0).toFixed(1)}% · ${rLabel} ${(best.cvr_pct||0).toFixed(1)}% · ${cLabel} ${fmtCpa(best.cpa_vnd||0)} · QS ${(best.quality_score||0).toFixed(1)}. ${formula}.`;
-  const insightBest=`Asset này không thắng ở khả năng kéo click, mà thắng ở chất lượng user sau click. Điểm nên giữ là ${bestProof.offer?`offer ${bestProof.offer}K`: 'offer'}${bestProof.useCase?` + use case ${bestProof.useCase}`:''}. Không tăng budget trực tiếp cho đúng asset hiện tại; hãy dùng nó làm base message và tạo bản mới có offer/CTA dễ đọc hơn${bestProof.size?` trong size ${bestProof.size}`:''}.`;
-  const whyText=`${mode}: trigger có khả năng đến từ offer/use case cụ thể, không phải chỉ từ attention. ${rLabel} cao nghĩa là user đã click có xu hướng hoàn tất primary metric tốt; CTR thấp nghĩa là visual/CTA/placement chưa kéo đủ click volume. Placement = nơi ad được hiển thị trong app.`;
-  const proofBest=`${bestProof.label}. Metric đọc kèm: low CTR nhưng high ${rLabel} -> message đang lọc đúng intent sau click.`;
-  const proofWorst=`${worstProof.label}. Metric đọc kèm: CTR/${rLabel} lệch với best -> attention chưa đồng nghĩa qualified intent.`;
-  const nextTest=`Giữ ${bestProof.offer?`offer ${bestProof.offer}K`: 'offer chính'}${bestProof.useCase?` + ${bestProof.useCase}`:''}; test 3 variant: (1) offer lớn hơn, (2) CTA button rõ hơn, (3) visual hierarchy sạch hơn${bestProof.size?` cho ${bestProof.size}`:''}.`;
+  const insightBest=ci.best_insight||`Asset này không thắng ở khả năng kéo click, mà thắng ở chất lượng user sau click. Điểm nên giữ là ${bestProof.offer?`offer ${bestProof.offer}K`: 'offer'}${bestProof.useCase?` + use case ${bestProof.useCase}`:''}. Không tăng budget trực tiếp cho đúng asset hiện tại; hãy dùng nó làm base message và tạo bản mới có offer/CTA dễ đọc hơn${bestProof.size?` trong size ${bestProof.size}`:''}.`;
+  const whyText=ci.why_it_wins||`${mode}: trigger có khả năng đến từ offer/use case cụ thể, không phải chỉ từ attention. ${rLabel} cao nghĩa là user đã click có xu hướng hoàn tất primary metric tốt; CTR thấp nghĩa là visual/CTA/placement chưa kéo đủ click volume. Placement = nơi ad được hiển thị trong app.`;
+  const proofBest=ci.proof_best||`${bestProof.label}. Metric đọc kèm: low CTR nhưng high ${rLabel} -> message đang lọc đúng intent sau click.`;
+  const proofWorst=ci.proof_worst||`${worstProof.label}. Metric đọc kèm: CTR/${rLabel} lệch với best -> attention chưa đồng nghĩa qualified intent.`;
+  const nextTest=ci.next_test||`Giữ ${bestProof.offer?`offer ${bestProof.offer}K`: 'offer chính'}${bestProof.useCase?` + ${bestProof.useCase}`:''}; test 3 variant: (1) offer lớn hơn, (2) CTA button rõ hơn, (3) visual hierarchy sạch hơn${bestProof.size?` cho ${bestProof.size}`:''}.`;
 
   const winning=`<div style="display:flex;flex-direction:column;gap:8px">
     <div style="font-size:13px;font-weight:700;color:var(--ok)">🏆 Winning</div>
@@ -1500,14 +1601,14 @@ function renderCreativeComparison(best,worst){
       ${metricBadges(best)}
       <div style="font-size:13px;margin-top:8px;line-height:1.55"><strong>Data Evidence:</strong><br>${esc(evidenceBest)}</div>
       <div style="font-size:13px;margin-top:6px;line-height:1.55"><strong>Insight:</strong><br>${esc(insightBest)}</div>
-      <div class="insight-block green" style="margin-top:8px"><strong>Replicate:</strong><br>${esc(insB.replicate)}</div>
+      <div class="insight-block green" style="margin-top:8px"><strong>Replicate:</strong><br>${esc(ci.best_replicate||insB.replicate)}</div>
     </div>
   </div>`;
 
   const why=`<div style="display:flex;flex-direction:column;gap:8px">
     <div style="font-size:13px;font-weight:700;color:var(--pri)">⚡ Why It Wins</div>
     <div class="citem" style="flex-direction:column;padding:12px">
-      <div style="font-size:13px;line-height:1.6"><strong>Trigger:</strong> ${esc(whyText)}</div>
+      <div style="font-size:13px;line-height:1.6"><strong>Trigger:</strong> ${esc(ci.best_trigger||whyText)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
         <div style="padding:8px 10px;border-radius:6px;background:var(--ok-l);font-size:12px;line-height:1.45;color:#166534"><strong>Proof - best</strong><br>${esc(proofBest)}</div>
         <div style="padding:8px 10px;border-radius:6px;background:var(--err-l);font-size:12px;line-height:1.45;color:#991b1b"><strong>Proof - worst</strong><br>${esc(proofWorst)}</div>
@@ -1529,9 +1630,9 @@ function renderCreativeComparison(best,worst){
         <div style="text-align:right;flex-shrink:0"><div style="font-size:20px;font-weight:700;color:var(--err)">${(worst.quality_score||0).toFixed(1)}</div><div style="font-size:10px;color:var(--g400);line-height:1.1" title="Quality Score = CTR×15% + CVR×45% + CPA×40%">Quality Score</div></div>
       </div>
       ${metricBadges(worst)}
-      <div style="font-size:13px;margin-top:8px;line-height:1.55"><strong class="weakness-line">Weakness:</strong><br>${esc(normalizeInsightCopy(insW.weakness))}</div>
-      <div style="font-size:13px;margin-top:6px;line-height:1.55"><strong>Insight:</strong><br>${esc(normalizeInsightCopy(insW.insight))}</div>
-      <div class="insight-block red" style="margin-top:8px"><strong>Avoid:</strong><br>${esc(insW.replicate)}</div>
+      <div style="font-size:13px;margin-top:8px;line-height:1.55"><strong class="weakness-line">Weakness:</strong><br>${esc(ci.worst_weakness||normalizeInsightCopy(insW.weakness))}</div>
+      <div style="font-size:13px;margin-top:6px;line-height:1.55"><strong>Insight:</strong><br>${esc(ci.worst_insight||normalizeInsightCopy(insW.insight))}</div>
+      <div class="insight-block red" style="margin-top:8px"><strong>Avoid:</strong><br>${esc(ci.worst_avoid||insW.replicate)}</div>
     </div>
   </div>`;
 
@@ -1542,8 +1643,13 @@ function renderNotificationComparison(best,worst){
   const insB=getNotificationBestInsight(best);
   const insW=getNotificationWeakInsight(worst);
   const ma=lastResult.metric_availability||{};
-  const proofBest=`Title/body/promotion: ${best.title||best.entity||'best message'}${best.description?` | ${best.description}`:''}${best.promotion?` | promo ${best.promotion}`:''}${best.send_time?` | send time ${best.send_time}`:''}. Metric đọc kèm: Click ${formatRate(best.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(best.cvr_pct)}`:''}.`;
-  const proofWorst=`Title/body/promotion: ${worst.title||worst.entity||'weak message'}${worst.description?` | ${worst.description}`:''}${worst.promotion?` | promo ${worst.promotion}`:''}${worst.send_time?` | send time ${worst.send_time}`:''}. Metric đọc kèm: Click ${formatRate(worst.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(worst.cvr_pct)}`:''}.`;
+  const hasCopy=hasNotificationCopyData();
+  const proofBest=hasCopy
+    ? `Title/body/promotion: ${best.title||best.entity||'best message'}${best.description?` | ${best.description}`:''}${best.promotion?` | promo ${best.promotion}`:''}${best.send_time?` | send time ${best.send_time}`:''}. Metric đọc kèm: Click ${formatRate(best.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(best.cvr_pct)}`:''}.`
+    : `Dữ liệu hiện có: ${best.entity||'best message id'}${best.send_time?` | send time ${best.send_time}`:''}. Metric đọc kèm: Click ${formatRate(best.ctr_pct)}${ma.payment!==false?`, action rate ${formatRate(best.cvr_pct)}`:''}. Chưa có title/body để chứng minh copy trigger.`;
+  const proofWorst=hasCopy
+    ? `Title/body/promotion: ${worst.title||worst.entity||'weak message'}${worst.description?` | ${worst.description}`:''}${worst.promotion?` | promo ${worst.promotion}`:''}${worst.send_time?` | send time ${worst.send_time}`:''}. Metric đọc kèm: Click ${formatRate(worst.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(worst.cvr_pct)}`:''}.`
+    : `Dữ liệu hiện có: ${worst.entity||'weak message id'}${worst.send_time?` | send time ${worst.send_time}`:''}. Metric đọc kèm: Click ${formatRate(worst.ctr_pct)}${ma.payment!==false?`, action rate ${formatRate(worst.cvr_pct)}`:''}. Chưa có title/body để kết luận copy yếu.`;
 
   const winning=`<div style="display:flex;flex-direction:column;gap:8px">
     <div style="font-size:13px;font-weight:700;color:var(--ok)">🏆 Winning</div>
@@ -1592,7 +1698,7 @@ function renderNotificationComparison(best,worst){
 }
 
 function getBestInsight(m){
-  const product=$('product').value||'App';
+  const product=($('product')&&$('product').value.trim())||'app';
   if(isNoti()){
     const ma=lastResult.metric_availability||{};
     const parts=[`%Sent ${formatRate(m.sent_rate_pct)}`];
@@ -1622,7 +1728,7 @@ function getBestInsight(m){
     weakness:'CTR thấp cho thấy first frame/visual packaging chưa đủ mạnh để dừng scroll hoặc tạo click volume.',
     insight:`Creative này không nên scale nguyên bản. Nó nên được xem là base concept để nhân bản phần offer/message, sau đó làm lại hook, CTA và visual hierarchy.`,
     replicate:'Giữ offer và framing "ưu đãi khi thanh toán/mua sắm".',
-    nextTest:`Tạo 3 variant:\n- CTA rõ benefit: "Tải ${product} nhận 15K"\n- Use case cụ thể: "Thanh toán TikTok Shop bằng ${product}"\n- Visual có người/bối cảnh checkout thật`
+    nextTest:`Tạo 3 variant:\n- CTA rõ benefit: nói thẳng user nhận gì\n- Use case cụ thể: gắn ${product} với tình huống thật\n- Visual có người/bối cảnh action thật`
   };
   return {
     evidence:`CTR ${m.ctr_pct.toFixed(1)}% | ${rateMetricLabel()} ${m.cvr_pct.toFixed(1)}% | ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)} — best signal trong peer set hiện tại.`,
@@ -1634,7 +1740,7 @@ function getBestInsight(m){
   };
 }
 function getWorstInsight(m){
-  const product=$('product').value||'App';
+  const product=($('product')&&$('product').value.trim())||'app';
   if(isNoti()){
     const ma=lastResult.metric_availability||{};
     const parts=[`%Sent ${formatRate(m.sent_rate_pct)}`];
@@ -1662,7 +1768,7 @@ function getWorstInsight(m){
     evidence:`CTR ${m.ctr_pct.toFixed(1)}% cao hơn nhiều creative khác, nhưng ${rateMetricLabel()} chỉ ${m.cvr_pct.toFixed(1)}% và ${costMetricLabel()} ${fmtCpa(m.cpa_vnd||0)}.`,
     strength:'Creative có khả năng tạo attention/click.',
     weakness:'Click không chuyển thành action, cho thấy traffic có thể là curiosity click hoặc promise không align với post-click experience.',
-    insight:`Không nên copy hook/visual chỉ vì CTR cao. Với UA, creative cần vừa kéo attention vừa qualify đúng intent install/login/payment.`,
+    insight:`Không nên copy hook/visual chỉ vì CTR cao. Creative cần vừa kéo attention vừa qualify đúng primary action sau click.`,
     replicate:'Tránh message quá rộng hoặc CTA chỉ tạo tò mò.',
     nextTest:`Làm promise cụ thể hơn: user nhận gì, điều kiện gì, hành động gì trong ${product}.`
   };

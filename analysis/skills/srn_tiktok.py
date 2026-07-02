@@ -39,7 +39,7 @@ def _analyze_video(r, all_results, ctr, cvr):
             "action": (
                 "Test 3 hook direction: "
                 "(1) Offer-dominant — số tiền lớn, contrast cao ngay frame 0; "
-                "(2) Human-context — người dùng thật đang checkout; "
+                "(2) Human-context — nguoi dung that trong boi canh ra quyet dinh; "
                 "(3) Problem-first — show pain point trước khi reveal solution."
             ),
         },
@@ -72,7 +72,7 @@ def _analyze_video(r, all_results, ctr, cvr):
             "icon": "✍️",
             "finding": (
                 "Text overlay và CTA phải cụ thể — "
-                "'Tải Zalopay nhận 15K' tốt hơn 'Tải ngay'."
+                "'Tải app nhận offer' tốt hơn 'Tải ngay'."
             ),
             "signal": "ok" if cvr > 5 else "warn",
             "action": (
@@ -119,7 +119,7 @@ def _analyze_image(r, all_results, ctr, cvr):
             "icon": "✍️",
             "finding": "Static: không có movement dẫn dắt attention — CTA phải self-evident.",
             "signal": "ok" if ctr > 1 else "warn",
-            "action": "CTA button shape + action text cụ thể. 'Nhận 15K ngay' tốt hơn 'Tìm hiểu thêm'. Position: bottom center.",
+            "action": "CTA button shape + action text cụ thể. 'Nhận offer ngay' tốt hơn 'Tìm hiểu thêm'. Position: bottom center.",
         },
     ]
     gap_note = "Low CTR + High CVR trên TikTok static: image chưa đủ bold để stop scroll, message tốt. Test bolder visual." if ctr < 1 and cvr > 5 else ""

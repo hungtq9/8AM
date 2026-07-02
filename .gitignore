@@ -24,3 +24,10 @@ test_result_report.html
 Creative report t4 final mobile.html
 /Thumbnail.png
 /Thumbnail 2.png
+/Thumbnail 3.png
+/Thumbnail 4.png
+# large media / demo recordings — keep out of git (GitHub rejects >100MB)
+*.mp4
+*.mov
+demo/*.mp4
+demo/*.mov
