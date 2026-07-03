@@ -21,7 +21,7 @@ try:  # load .env locally; on AgentBase env is injected at runtime (load_dotenv 
 except Exception:
     pass
 
-APP_BUILD = "2026-07-02.41"  # bump mỗi lần sửa để xác nhận đang chạy bản mới (xem /health hoặc badge UI)
+APP_BUILD = "2026-07-02.42"  # bump mỗi lần sửa để xác nhận đang chạy bản mới (xem /health hoặc badge UI)
 app = FastAPI(title="Creative Performance Insight Agent", version="4.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -174,19 +174,19 @@ async def _visual_evidence_for_creative(item: dict, image_payloads: list[dict]) 
         }
     vision_model = os.getenv("VISION_MODEL") or os.getenv("LLM_MODEL", "qwen/qwen3-5-27b")
     prompt = (
-        "You are a senior creative analyst. Analyze the uploaded ad image and return ONLY compact JSON (no markdown). "
-        "Use Vietnamese with English marketing terms. Do not infer performance from the image alone. "
-        "Required fields:\n"
-        "- color_palette: list of dominant colors (hex or name)\n"
-        "- contrast_level: high/medium/low — does the CTA/offer stand out?\n"
-        "- text_coverage_pct: estimated % of image area covered by text\n"
-        "- font_readability: high/medium/low — is text clear at mobile thumb-size?\n"
-        "- cta_visibility: description of CTA button/text — present? contrast? size?\n"
-        "- offer_visibility: is the offer/benefit dominant and readable at thumb-size?\n"
-        "- hook: what grabs attention first? (focal point / thumb-stop element)\n"
-        "- visual_hierarchy: eye path description (Offer→CTA→Brand? cluttered?)\n"
-        "- visual_why: 1-2 sentence summary of what makes this creative visually effective or weak\n"
-        "- visual_risk: any visual issues (too much text, low contrast, cluttered, CTA hidden)"
+        "Bạn là chuyên gia phân tích creative quảng cáo. Nhìn ảnh và mô tả yếu tố hình ảnh bằng TIẾNG VIỆT, "
+        "ngôn ngữ đời thường, ngắn gọn — TUYỆT ĐỐI không dùng thuật ngữ marketing tiếng Anh "
+        '(không "luxury aesthetic", "high-ticket", "premium trustworthiness"...). Trả JSON:\n'
+        "{\n"
+        ' "mau_sac": "màu chủ đạo + độ tương phản; offer/CTA có nổi không",\n'
+        ' "font_chu": "chữ dễ đọc không, có quá nhiều kiểu chữ không",\n'
+        ' "text_do_dac": "chữ nhiều/vừa/ít (ước lượng % diện tích)",\n'
+        ' "cta": "có nút CTA rõ không, có nổi bật không",\n'
+        ' "hook": "thứ đập vào mắt đầu tiên là gì",\n'
+        ' "layout": "bố cục gọn hay rối; mắt có đi Offer→CTA→Brand không",\n'
+        ' "nhan_xet": "1-2 câu tiếng Việt: yếu tố hình ảnh nào GIÚP/CẢN creative này"\n'
+        "}\n"
+        "Chỉ tả cái THẤY trong ảnh. Không bịa số. Không tiếng Anh."
     )
     try:
         b64_data = payload.get("b64", "")
@@ -229,7 +229,7 @@ async def _visual_evidence_for_creative(item: dict, image_payloads: list[dict]) 
             content = re.sub(r'^```(?:json)?\s*', '', content)
             content = re.sub(r'\s*```$', '', content)
             parsed = json.loads(content)
-            summary = parsed.get("visual_why") or parsed.get("hook") or "Đã đọc visual, cần xem JSON detail."
+            summary = parsed.get("nhan_xet") or parsed.get("hook") or parsed.get("mau_sac") or "Đã đọc visual, cần xem JSON detail."
             return {"status": "verified", "source": payload.get("name"), "summary": summary, "detail": parsed}
     except httpx.HTTPStatusError as e:
         status_code = e.response.status_code
@@ -262,10 +262,10 @@ async def _generate_visual_pair_evidence(best: dict, worst: dict, image_payloads
         parts = []
         if bv_ok:
             bd = best_visual.get("detail", {})
-            parts.append(f"Best: {best_visual.get('summary')} (text ~{bd.get('text_coverage_pct', '?')}%, contrast {bd.get('contrast_level', '?')}, CTA: {bd.get('cta_visibility', '?')})")
+            parts.append(f"Best: {best_visual.get('summary')} (màu: {bd.get('mau_sac', '?')}; chữ: {bd.get('text_do_dac', '?')}; CTA: {bd.get('cta', '?')})")
         if wv_ok:
             wd = worst_visual.get("detail", {})
-            parts.append(f"Worst: {worst_visual.get('summary')} (text ~{wd.get('text_coverage_pct', '?')}%, contrast {wd.get('contrast_level', '?')}, CTA: {wd.get('cta_visibility', '?')})")
+            parts.append(f"Worst: {worst_visual.get('summary')} (màu: {wd.get('mau_sac', '?')}; chữ: {wd.get('text_do_dac', '?')}; CTA: {wd.get('cta', '?')})")
         comparison = " | ".join(parts)
     else:
         comparison = "Phân tích hình ảnh: chưa khả dụng — insight hiện tại chỉ dựa trên số liệu và tên creative."

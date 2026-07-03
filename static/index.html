@@ -1647,12 +1647,15 @@ function renderNotificationComparison(best,worst){
   const insW=getNotificationWeakInsight(worst);
   const ma=lastResult.metric_availability||{};
   const hasCopy=hasNotificationCopyData();
-  const proofBest=hasCopy
+  const cw=lastResult&&lastResult.copy_why;
+  const whyBest=cw&&cw.why_best_wins?` VÌ SAO thắng: ${cw.why_best_wins}`:'';
+  const whyWorst=cw&&cw.why_worst_loses?` VÌ SAO thua: ${cw.why_worst_loses}`:'';
+  const proofBest=(hasCopy
     ? `Title/body/promotion: ${best.title||best.entity||'best message'}${best.description?` | ${best.description}`:''}${best.promotion?` | promo ${best.promotion}`:''}${best.send_time?` | send time ${best.send_time}`:''}. Metric đọc kèm: Click ${formatRate(best.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(best.cvr_pct)}`:''}.`
-    : `Dữ liệu hiện có: ${best.entity||'best message id'}${best.send_time?` | send time ${best.send_time}`:''}. Metric đọc kèm: Click ${formatRate(best.ctr_pct)}${ma.payment!==false?`, action rate ${formatRate(best.cvr_pct)}`:''}. Chưa có title/body để chứng minh copy trigger.`;
-  const proofWorst=hasCopy
+    : `Dữ liệu hiện có: ${best.entity||'best message id'}${best.send_time?` | send time ${best.send_time}`:''}. Metric đọc kèm: Click ${formatRate(best.ctr_pct)}${ma.payment!==false?`, action rate ${formatRate(best.cvr_pct)}`:''}. Chưa có title/body để chứng minh copy trigger.`)+whyBest;
+  const proofWorst=(hasCopy
     ? `Title/body/promotion: ${worst.title||worst.entity||'weak message'}${worst.description?` | ${worst.description}`:''}${worst.promotion?` | promo ${worst.promotion}`:''}${worst.send_time?` | send time ${worst.send_time}`:''}. Metric đọc kèm: Click ${formatRate(worst.ctr_pct)}${ma.payment!==false?`, Click→Payment ${formatRate(worst.cvr_pct)}`:''}.`
-    : `Dữ liệu hiện có: ${worst.entity||'weak message id'}${worst.send_time?` | send time ${worst.send_time}`:''}. Metric đọc kèm: Click ${formatRate(worst.ctr_pct)}${ma.payment!==false?`, action rate ${formatRate(worst.cvr_pct)}`:''}. Chưa có title/body để kết luận copy yếu.`;
+    : `Dữ liệu hiện có: ${worst.entity||'weak message id'}${worst.send_time?` | send time ${worst.send_time}`:''}. Metric đọc kèm: Click ${formatRate(worst.ctr_pct)}${ma.payment!==false?`, action rate ${formatRate(worst.cvr_pct)}`:''}. Chưa có title/body để kết luận copy yếu.`)+whyWorst;
 
   const winning=`<div style="display:flex;flex-direction:column;gap:8px">
     <div style="font-size:13px;font-weight:700;color:var(--ok)">🏆 Winning</div>
